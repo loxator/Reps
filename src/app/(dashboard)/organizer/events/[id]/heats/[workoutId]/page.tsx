@@ -6,7 +6,7 @@ import type { HeatRow, RegSummary } from '@/components/events/use-heat-manager'
 type Props = { params: Promise<{ id: string; workoutId: string }> }
 
 export default async function HeatPage({ params }: Props) {
-  const { id, workoutId } = await params
+  const { workoutId } = await params
   const supabase = await createClient()
 
   const { data: { user } } = await supabase.auth.getUser()
@@ -66,12 +66,34 @@ export default async function HeatPage({ params }: Props) {
     }
   })
 
+  const unassigned = registrations.length - heats.reduce((n, h) => n + h.assignedIds.length, 0)
+
   return (
     <main className="max-w-5xl mx-auto px-page-x py-10 overflow-x-hidden">
-      <h1 className="text-xl font-semibold mb-1">{workout.name}</h1>
-      <p className="text-sm text-muted-foreground mb-8">
-        Workout {workout.order_num} · {w.categories?.name} · Manage heats and start times
-      </p>
+      <header className="pb-8 mb-8 border-b border-border flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+        <div className="min-w-0">
+          <p className="text-xs font-medium text-muted-foreground tabular-nums mb-2">
+            Workout {workout.order_num} · {w.categories?.name}
+          </p>
+          <h1 className="text-heading font-bold tracking-tight truncate">
+            {workout.name}
+          </h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Assign athletes to heats and set start times.
+          </p>
+        </div>
+        <div className="flex gap-8 tabular-nums shrink-0">
+          <div>
+            <p className="text-subhead font-bold leading-none">{heats.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Heats</p>
+          </div>
+          <div>
+            <p className="text-subhead font-bold leading-none">{unassigned}</p>
+            <p className="text-xs text-muted-foreground mt-1">Unassigned</p>
+          </div>
+        </div>
+      </header>
+
       <HeatManager
         workoutId={workoutId}
         workoutName={workout.name}

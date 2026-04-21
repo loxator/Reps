@@ -34,10 +34,14 @@ export default async function CategoriesPage({ params }: Props) {
 
   return (
     <main className="max-w-3xl mx-auto px-page-x py-10">
-      <h1 className="text-xl font-semibold mb-2">Categories & Workouts</h1>
-      <p className="text-sm text-muted-foreground mb-8">
-        Define the divisions athletes register for, and the workouts they&apos;ll compete in.
-      </p>
+      <header className="pb-8 mb-8 border-b border-border">
+        <h1 className="text-heading font-bold tracking-tight">Categories &amp; workouts</h1>
+        <p className="mt-2 text-sm text-muted-foreground max-w-lg leading-relaxed">
+          Categories are the divisions athletes register for. Workouts are what each division
+          actually competes in — ordered top to bottom as they&apos;ll run on the day.
+        </p>
+      </header>
+
       <CategoryManager eventId={id} initial={categories} />
     </main>
   )

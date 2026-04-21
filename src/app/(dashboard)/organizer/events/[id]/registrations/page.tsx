@@ -36,13 +36,29 @@ export default async function RegistrationsPage({ params }: Props) {
 
   const rows = (registrations ?? []) as unknown as RegistrationRow[]
   const categories = (event.categories ?? []) as { id: string; name: string }[]
+  const checkedIn = rows.filter((r) => r.checked_in).length
 
   return (
     <main className="max-w-5xl mx-auto px-page-x py-10">
-      <h1 className="text-xl font-semibold mb-2">Registrations</h1>
-      <p className="text-sm text-muted-foreground mb-8">
-        {rows.length} athlete{rows.length !== 1 ? 's' : ''} registered for {event.name}
-      </p>
+      <header className="pb-8 mb-8 border-b border-border flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div>
+          <h1 className="text-heading font-bold tracking-tight">Registrations</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            Everyone signed up for <span className="font-medium text-foreground">{event.name}</span>.
+          </p>
+        </div>
+        <div className="flex gap-8 tabular-nums">
+          <div>
+            <p className="text-subhead font-bold leading-none">{rows.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">Registered</p>
+          </div>
+          <div>
+            <p className="text-subhead font-bold leading-none">{checkedIn}</p>
+            <p className="text-xs text-muted-foreground mt-1">Checked in</p>
+          </div>
+        </div>
+      </header>
+
       <RegistrationList registrations={rows} categories={categories} />
     </main>
   )
