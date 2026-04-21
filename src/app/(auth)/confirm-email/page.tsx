@@ -2,36 +2,48 @@
 import { Suspense } from 'react'
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import { MailOpen } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 
 function ConfirmEmailContent() {
   const searchParams = useSearchParams()
-  const email = searchParams.get('email') ?? 'your inbox'
+  const email = searchParams.get('email')
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-6">
-      <div className="w-full max-w-sm text-center">
-        <div className="flex items-center justify-center size-16 rounded-2xl bg-muted mx-auto mb-6">
-          <MailOpen className="size-8 text-foreground" />
+    <div className="min-h-screen flex items-center justify-center px-6 py-12">
+      <div className="w-full max-w-md">
+
+        <Link href="/" className="inline-block mb-12 text-lg font-semibold tracking-tight">
+          reps<span className="text-primary">.</span>
+        </Link>
+
+        {/* A thin rule replaces the rounded-square icon block */}
+        <div className="h-px w-12 bg-foreground mb-8" />
+
+        <h1 className="text-heading md:text-title font-bold leading-tight tracking-tight">
+          Check your inbox.
+        </h1>
+
+        <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
+          We just sent a confirmation link to{' '}
+          {email
+            ? <span className="font-medium text-foreground break-all">{email}</span>
+            : <span className="font-medium text-foreground">your inbox</span>}
+          . Click it to activate your account.
+        </p>
+
+        <p className="mt-4 text-sm text-muted-foreground leading-relaxed">
+          Not there? It&apos;s usually in spam or promotions. Emails can take a couple of minutes to
+          arrive — we don&apos;t queue them but your provider might.
+        </p>
+
+        <div className="mt-10 flex flex-wrap gap-3">
+          <Button asChild variant="outline">
+            <Link href="/">Back to home</Link>
+          </Button>
+          <Button asChild variant="ghost">
+            <Link href="/login">I&apos;ve confirmed → sign in</Link>
+          </Button>
         </div>
-
-        <h1 className="text-2xl font-medium mb-2">Check your inbox</h1>
-        <p className="text-muted-foreground text-sm mb-1">
-          We sent a confirmation link to
-        </p>
-        <p className="font-medium text-sm mb-6 break-all">{email}</p>
-
-        <p className="text-sm text-muted-foreground mb-8 leading-relaxed">
-          Click the link in that email to activate your account and complete your profile setup.
-          <span className="block mt-2">
-            Can&apos;t find it? Check your spam or junk folder.
-          </span>
-        </p>
-
-        <Button asChild variant="outline" size="lg" className="w-full">
-          <Link href="/">Back to home</Link>
-        </Button>
       </div>
     </div>
   )
