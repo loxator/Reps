@@ -81,6 +81,9 @@
   --color-danger-900: var(--color-red-900);
   --color-danger-950: var(--color-red-950);
 
+  /* ── Chalk (warm off-white for past-events band) ────────────────────── */
+  --color-chalk-100: oklch(0.965 0.014 86);
+
   /* ── Warning (amber) ─────────────────────────────────────────────────── */
   --color-warning-50:  var(--color-amber-50);
   --color-warning-100: var(--color-amber-100);
