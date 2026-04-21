@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { createClient } from '@/lib/supabase/server'
 import { Button } from '@/components/ui/button'
 import { LogoutButton } from '@/components/layout/logout-button'
+import { NavLinks } from '@/components/layout/nav-links'
 
 export async function Navbar() {
   const supabase = await createClient()
@@ -18,16 +19,7 @@ export async function Navbar() {
           reps.
         </Link>
 
-        <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
-          <Link href="/events" className="hover:text-foreground transition-colors">
-            Events
-          </Link>
-          {user && (
-            <Link href={dashboardHref} className="hover:text-foreground transition-colors">
-              {isOrganizer ? 'My events' : 'Dashboard'}
-            </Link>
-          )}
-        </nav>
+        <NavLinks isOrganizer={isOrganizer} isLoggedIn={!!user} />
 
         <div className="flex items-center gap-2">
           {user ? (
