@@ -1,6 +1,7 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
-import { MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { Button } from '@/components/ui/button'
 import { PendingInvites } from '@/components/athlete/pending-invites'
 import { RegisteredEventCard, type RegisteredEvent } from '@/components/athlete/registered-event-card'
 import { EventCard } from '@/components/events/event-card'
@@ -13,11 +14,17 @@ export default async function AthleteDashboard() {
   if (!user) redirect('/login')
 
   // ── Parallel fetches ───────────────────────────────────────────────────────
-  const [profileRes, registrationsRes, invitesRes] = await Promise.all([
+  const [profileRes, userRes, registrationsRes, invitesRes] = await Promise.all([
     supabase
       .from('athlete_profiles')
       .select('location')
       .eq('user_id', user.id)
+      .single(),
+
+    supabase
+      .from('users')
+      .select('name')
+      .eq('id', user.id)
       .single(),
 
     supabase
@@ -50,8 +57,9 @@ export default async function AthleteDashboard() {
       .eq('status', 'invited'),
   ])
 
+  const firstName = ((userRes.data as { name?: string } | null)?.name ?? '').split(' ')[0] || null
   const location = profileRes.data?.location ?? null
-  const registrations = (registrationsRes.data ?? []) as RegisteredEvent[]
+  const registrations = (registrationsRes.data ?? []) as unknown as RegisteredEvent[]
   const invites = invitesRes.data ?? []
 
   // ── Events near the athlete's location ───────────────────────────────────
@@ -88,97 +96,129 @@ export default async function AthleteDashboard() {
     (r) => r.events && new Date(r.events.date) < new Date()
   )
 
-  return (
-    <main className="max-w-4xl mx-auto px-page-x pt-28 pb-section">
+  const nextReg = upcomingRegs[upcomingRegs.length - 1] ?? null // earliest upcoming
+  const nextEventDate = nextReg?.events?.date
+    ? new Date(nextReg.events.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
+    : null
 
-      {/* ── Pending invites ─────────────────────────────────────────────── */}
+  return (
+    <main className="max-w-5xl mx-auto px-page-x pt-24 pb-section">
+
+      {/* ── Greeting ───────────────────────────────────────────────────── */}
+      <header className="pt-10 pb-10 border-b border-border">
+        <h1 className="text-title md:text-display font-bold leading-[1.02] tracking-tight">
+          {firstName ? `Hey ${firstName}.` : 'Hey there.'}
+        </h1>
+        <p className="mt-3 text-base text-muted-foreground max-w-prose">
+          {upcomingRegs.length === 0
+            ? 'You haven\'t signed up for anything yet. Something below might change that.'
+            : upcomingRegs.length === 1
+              ? `You\'ve got one event coming up${nextEventDate ? ` — ${nextEventDate}` : ''}.`
+              : `You\'ve got ${upcomingRegs.length} events coming up${nextEventDate ? ` — next on ${nextEventDate}` : ''}.`}
+        </p>
+      </header>
+
+      {/* ── Pending invites ────────────────────────────────────────────── */}
       {invites.length > 0 && (
-        <div className="mb-10">
+        <section className="mt-10">
           <PendingInvites invites={invites} />
-        </div>
+        </section>
       )}
 
-      {/* ── My events ───────────────────────────────────────────────────── */}
-      <section className="mb-12">
-        <h1 className="text-2xl font-semibold mb-1">My events</h1>
-        <p className="text-sm text-muted-foreground mb-6">
-          {registrations.length === 0
-            ? `registered for any events yet.`
-            : `${registrations.length} registration${registrations.length !== 1 ? 's' : ''}`}
-        </p>
+      {/* ── My events ──────────────────────────────────────────────────── */}
+      <section className="mt-12">
 
+        {/* Upcoming */}
         {upcomingRegs.length > 0 && (
-          <div className="mb-8">
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-4">
-              Upcoming
-            </h2>
-            <div className="grid sm:grid-cols-2 gap-4">
+          <>
+            <div className="flex items-baseline justify-between mb-5">
+              <h2 className="text-subhead font-bold">Coming up</h2>
+              <p className="text-sm text-muted-foreground tabular-nums">
+                {upcomingRegs.length}
+              </p>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4 mb-10">
               {upcomingRegs.map((reg) => (
                 <RegisteredEventCard key={reg.id} reg={reg} />
               ))}
             </div>
-          </div>
+          </>
         )}
 
+        {/* Past */}
         {pastRegs.length > 0 && (
-          <div>
-            <h2 className="text-sm font-medium text-muted-foreground uppercase tracking-widest mb-4">
-              Past
-            </h2>
-            <div className="grid sm:grid-cols-2 gap-4 opacity-60">
+          <>
+            <div className="flex items-baseline justify-between mb-5">
+              <h2 className="text-subhead font-bold">Previously</h2>
+              <p className="text-sm text-muted-foreground tabular-nums">
+                {pastRegs.length}
+              </p>
+            </div>
+            <div className="grid sm:grid-cols-2 gap-4 opacity-70">
               {pastRegs.map((reg) => (
                 <RegisteredEventCard key={reg.id} reg={reg} />
               ))}
             </div>
-          </div>
+          </>
         )}
 
+        {/* Empty — prose, not a dashed-border card */}
         {registrations.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-16 rounded-xl border border-dashed border-border text-center">
-            <p className="font-medium text-sm mb-1">No events yet</p>
-            <p className="text-sm text-muted-foreground">
-              Browse events and register to see them here.
+          <div className="max-w-md py-4">
+            <h2 className="text-subhead font-bold">Nothing on the calendar yet.</h2>
+            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+              When you register for an event it&apos;ll land here — along with your division,
+              heat assignments, and check-in info once the organiser publishes them.
             </p>
+            <Button asChild variant="outline" size="sm" className="mt-5">
+              <Link href="/events">Find an event</Link>
+            </Button>
           </div>
         )}
       </section>
 
-      {/* ── Events near you ─────────────────────────────────────────────── */}
-      {city && (
-        <section>
-          <div className="flex items-center gap-2 mb-1">
-            <h2 className="text-2xl font-semibold">Events near you</h2>
+      {/* ── Events near you ────────────────────────────────────────────── */}
+      {city ? (
+        <section className="mt-16">
+          <div className="flex items-baseline justify-between mb-5">
+            <div>
+              <h2 className="text-subhead font-bold">Near {city}</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Open competitions in your area you haven&apos;t registered for yet.
+              </p>
+            </div>
+            <Button asChild variant="ghost" size="sm">
+              <Link href="/events">All events →</Link>
+            </Button>
           </div>
-          <p className="text-sm text-muted-foreground mb-6 flex items-center gap-1">
-            <MapPin className="size-3.5 shrink-0" />
-            Open events in {city}
-          </p>
 
           {nearbyEvents.length > 0 ? (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
               {nearbyEvents.map((event) => (
                 <EventCard key={event.id} event={event} />
               ))}
             </div>
           ) : (
-            <div className="flex flex-col items-center justify-center py-16 rounded-xl border border-dashed border-border text-center">
-              <p className="font-medium text-sm mb-1">Nothing nearby right now</p>
-              <p className="text-sm text-muted-foreground">
-                No open events found in {city}. Check back soon.
-              </p>
-            </div>
+            <p className="text-sm text-muted-foreground max-w-md py-4">
+              Nothing open in {city} right now. Check back soon, or{' '}
+              <Link href="/events" className="text-foreground underline-offset-4 hover:underline">
+                browse events in other regions
+              </Link>
+              .
+            </p>
           )}
         </section>
-      )}
-
-      {/* Prompt to set location if missing */}
-      {!city && (
-        <div className="rounded-xl border border-dashed border-border p-card text-center">
-          <p className="font-medium text-sm mb-1">Set your location</p>
-          <p className="text-sm text-muted-foreground">
-            Add a location to your profile to see events near you.
+      ) : (
+        <section className="mt-16 py-10 border-t border-border">
+          <h2 className="text-subhead font-bold">Tell us where you train.</h2>
+          <p className="mt-3 text-sm text-muted-foreground max-w-md leading-relaxed">
+            Add a location to your profile and we&apos;ll surface competitions nearby the moment
+            they open — no chasing.
           </p>
-        </div>
+          <Button asChild variant="outline" size="sm" className="mt-5">
+            <Link href="/athlete/profile">Set my location</Link>
+          </Button>
+        </section>
       )}
 
     </main>
