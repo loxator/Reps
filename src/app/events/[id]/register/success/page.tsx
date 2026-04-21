@@ -1,6 +1,6 @@
 import { notFound } from 'next/navigation'
 import Link from 'next/link'
-import { CheckCircle2, Calendar, MapPin } from 'lucide-react'
+import { Calendar, MapPin } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { Navbar } from '@/components/layout/navbar'
 import { Button } from '@/components/ui/button'
@@ -39,49 +39,61 @@ export default async function RegistrationSuccessPage({ params }: Props) {
   return (
     <>
       <Navbar />
-      <main className="mx-auto max-w-md px-page-x pt-28 pb-section text-center">
-        {/* Icon */}
-        <div className="flex items-center justify-center size-16 rounded-full bg-success-100 mx-auto mb-6">
-          <CheckCircle2 className="size-8 text-success-600" />
-        </div>
+      <main className="mx-auto max-w-lg px-page-x pt-28 pb-section">
 
-        <h1 className="text-title font-bold mb-2">You&apos;re in!</h1>
-        <p className="text-muted-foreground text-sm mb-8">
-          Your registration for{' '}
-          <span className="font-medium text-foreground">{event.name}</span>
-          {registration?.division && (
-            <> — <span className="font-medium text-foreground">{registration.division}</span></>
-          )}
-          {' '}is confirmed.
+        {/* A thin success rule does the work a rounded icon used to. */}
+        <div className="h-px w-12 bg-success-500 mb-8" />
+
+        <p className="text-xs font-medium text-success-700 mb-3 tracking-wide">
+          Registration confirmed
         </p>
 
-        {/* Event details card */}
-        <div className="rounded-xl border border-border p-card text-left mb-8 shadow-card">
-          <p className="font-semibold mb-3">{event.name}</p>
-          <div className="flex flex-col gap-2 text-sm text-muted-foreground">
-            <span className="flex items-center gap-2">
-              <Calendar className="size-4 shrink-0" />
-              {formatDate(event.date)}
-            </span>
-            <span className="flex items-center gap-2">
-              <MapPin className="size-4 shrink-0" />
-              {event.location}
-            </span>
-          </div>
-          {registration?.team_name && (
-            <p className="mt-3 text-sm">
-              <span className="text-muted-foreground">Team: </span>
-              <span className="font-medium">{registration.team_name}</span>
-            </p>
-          )}
-        </div>
+        <h1 className="text-title md:text-display font-bold leading-[1.02] tracking-tight">
+          You&apos;re in.
+        </h1>
 
-        <div className="flex flex-col gap-3">
-          <Button asChild size="lg" className="w-full">
-            <Link href="/events">Browse more events</Link>
+        <p className="mt-5 text-base text-muted-foreground leading-relaxed">
+          You&apos;re registered for{' '}
+          <span className="font-medium text-foreground">{event.name}</span>
+          {registration?.division && (
+            <> in <span className="font-medium text-foreground">{registration.division}</span></>
+          )}
+          {registration?.team_name && (
+            <> as <span className="font-medium text-foreground">{registration.team_name}</span></>
+          )}
+          {'. We\'ll send heat assignments closer to the date.'}
+        </p>
+
+        {/* Event details — borderless, typographic */}
+        <dl className="mt-10 pt-8 border-t border-border flex flex-col gap-4">
+          <div className="grid grid-cols-[7rem_1fr] gap-4 text-sm">
+            <dt className="text-muted-foreground">Event</dt>
+            <dd className="font-medium">{event.name}</dd>
+          </div>
+          <div className="grid grid-cols-[7rem_1fr] gap-4 text-sm">
+            <dt className="text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <Calendar className="size-3.5" /> Date
+              </span>
+            </dt>
+            <dd className="font-medium">{formatDate(event.date)}</dd>
+          </div>
+          <div className="grid grid-cols-[7rem_1fr] gap-4 text-sm">
+            <dt className="text-muted-foreground">
+              <span className="inline-flex items-center gap-1.5">
+                <MapPin className="size-3.5" /> Location
+              </span>
+            </dt>
+            <dd className="font-medium">{event.location}</dd>
+          </div>
+        </dl>
+
+        <div className="mt-10 flex flex-wrap gap-3">
+          <Button asChild size="lg">
+            <Link href="/athlete">Go to my dashboard</Link>
           </Button>
-          <Button asChild variant="outline" size="lg" className="w-full">
-            <Link href="/athlete">My dashboard</Link>
+          <Button asChild size="lg" variant="outline">
+            <Link href="/events">Find another event</Link>
           </Button>
         </div>
       </main>

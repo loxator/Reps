@@ -1,17 +1,20 @@
 import { notFound } from 'next/navigation'
-import Link from 'next/link'
-import { MapPin, Calendar, Clock, Repeat, Dumbbell, RefreshCw, Users, User, ArrowRight, CheckCircle2 } from 'lucide-react'
+import { MapPin, Calendar } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { Navbar } from '@/components/layout/navbar'
 import { Badge } from '@/components/ui/badge'
 import { LiveCapacity } from '@/components/events/live-capacity'
-import type { Event, Category, Workout, EventStatus, ScoringType, HeatAssignment } from '@/types'
+import { EventTabs } from '@/components/events/event-tabs'
+import { CategoryCard } from '@/components/events/category-card'
+import { MyScheduleBanner, type ScheduleEntry } from '@/components/events/my-schedule-banner'
+import { EventScheduleTab } from '@/components/events/event-schedule-tab'
+import type { Event, Category, Workout, EventStatus, HeatAssignment } from '@/types'
 
 const BANNER_IMAGES = [
-  'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1400&h=500&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1400&h=500&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1400&h=500&fit=crop&q=80',
-  'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=1400&h=500&fit=crop&q=80',
+  'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1800&h=900&fit=crop&q=85',
+  'https://images.unsplash.com/photo-1517836357463-d25dfeac3438?w=1800&h=900&fit=crop&q=85',
+  'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?w=1800&h=900&fit=crop&q=85',
+  'https://images.unsplash.com/photo-1526506118085-60ce8714f8c5?w=1800&h=900&fit=crop&q=85',
 ]
 
 function bannerFor(id: string) {
@@ -31,20 +34,22 @@ const statusLabel: Record<EventStatus, string> = {
   draft:  'Draft',
 }
 
-const scoringMeta: Record<ScoringType, { label: string; Icon: React.ElementType }> = {
-  time:   { label: 'For Time',  Icon: Clock },
-  reps:   { label: 'Max Reps',  Icon: Repeat },
-  load:   { label: 'Max Load',  Icon: Dumbbell },
-  rounds: { label: 'AMRAP',     Icon: RefreshCw },
+const VALID_TABS = ['overview', 'workouts', 'schedule'] as const
+type TabKey = typeof VALID_TABS[number]
+
+type Props = {
+  params:      Promise<{ id: string }>
+  searchParams: Promise<{ tab?: string }>
 }
 
-type Props = { params: Promise<{ id: string }> }
+export default async function EventPage({ params, searchParams }: Props) {
+  const { id }       = await params
+  const { tab: tabParam } = await searchParams
+  const activeTab: TabKey = VALID_TABS.includes(tabParam as TabKey)
+    ? (tabParam as TabKey)
+    : 'overview'
 
-export default async function EventPage({ params }: Props) {
-  const { id } = await params
   const supabase = await createClient()
-
-  // Current user may be null (guests can view event pages)
   const { data: { user } } = await supabase.auth.getUser()
 
   const { data: event } = await supabase
@@ -60,10 +65,12 @@ export default async function EventPage({ params }: Props) {
     categories: (Category & { workouts: Workout[] })[]
   }
 
-  // Fetch this athlete's registrations for the event (with heat assignments)
+  const categories = (e.categories ?? []).sort((a, b) => a.order_num - b.order_num)
+
+  // ── Athlete's registrations ──────────────────────────────────────────────────
   const registeredCategoryIds = new Set<string>()
   type MyReg = { category_id: string | null; heat_assignments: HeatAssignment[] }
-  const myRegsByCategoryId = new Map<string, MyReg>()
+  const myRegsByCategoryId    = new Map<string, MyReg>()
 
   if (user) {
     const { data: myRegs } = await supabase
@@ -85,221 +92,192 @@ export default async function EventPage({ params }: Props) {
     })
   }
 
+  // ── "Your schedule" banner entries ──────────────────────────────────────────
+  const myScheduleEntries: ScheduleEntry[] = []
+  for (const [catId, reg] of myRegsByCategoryId) {
+    const cat = categories.find((c) => c.id === catId)
+    for (const ha of reg.heat_assignments ?? []) {
+      myScheduleEntries.push({
+        categoryName: cat?.name ?? '',
+        workoutName:  ha.heats?.workouts?.name ?? 'Workout',
+        workoutOrder: ha.heats?.workouts?.order_num ?? 0,
+        heatName:     ha.heats?.name ?? '',
+        startTime:    ha.heats?.start_time ?? null,
+      })
+    }
+  }
+  myScheduleEntries.sort((a, b) => a.workoutOrder - b.workoutOrder)
+
+  // ── Schedule tab data (fetched only when needed) ────────────────────────────
+  type ScheduleCategoryRow = Parameters<typeof EventScheduleTab>[0]['categories'][number]
+  let scheduleCategories: ScheduleCategoryRow[] | null = null
+
+  if (activeTab === 'schedule') {
+    const { data } = await supabase
+      .from('categories')
+      .select(`
+        id, name, order_num,
+        workouts(
+          id, name, order_num, scoring_type,
+          heats(
+            id, name, start_time, capacity, order_num,
+            heat_assignments(
+              registration:registrations(
+                id, team_name, is_team,
+                athlete:users!registrations_athlete_id_fkey(name)
+              )
+            )
+          )
+        )
+      `)
+      .eq('event_id', id)
+      .order('order_num')
+
+    scheduleCategories = (data ?? []) as unknown as ScheduleCategoryRow[]
+  }
+
+  // ── Derived booleans ─────────────────────────────────────────────────────────
+  const today        = new Date().toISOString().split('T')[0]
+  const isPast       = e.date < today
   const filled       = e.registrations?.[0]?.count ?? 0
   const isFull       = e.capacity > 0 && filled >= e.capacity
   const isNearlyFull = e.capacity > 0 && filled / e.capacity >= 0.8
   const remaining    = e.capacity > 0 ? e.capacity - filled : null
-  const canRegister  = e.status === 'open' && !isFull
-
-  const categories = (e.categories ?? []).sort((a, b) => a.order_num - b.order_num)
+  const canRegister  = e.status === 'open' && !isFull && !isPast
 
   return (
     <>
       <Navbar />
       <main className="pb-section">
 
-        {/* ── Banner ──────────────────────────────────────────────────── */}
-        <div className="h-72 md:h-96 overflow-hidden mt-14">
+        {/* ── Banner ──────────────────────────────────────────────────────── */}
+        <div className="relative h-80 md:h-[28rem] overflow-hidden mt-14">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={bannerFor(e.id)} alt={e.name} className="w-full h-full object-cover object-center" />
+          <img
+            src={bannerFor(e.id)}
+            alt=""
+            aria-hidden
+            className="w-full h-full object-cover object-center"
+          />
+          {/* Subtle bottom fade so the title block below feels anchored */}
+          <div
+            className="absolute inset-0 pointer-events-none"
+            style={{
+              background:
+                'linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.15) 100%)',
+            }}
+          />
         </div>
 
         <div className="mx-auto max-w-4xl px-page-x">
 
-          {/* ── Event header ────────────────────────────────────────────── */}
-          <div className="py-8 border-b border-border">
-            <div className="flex flex-wrap gap-2 mb-3">
-              <Badge variant={e.status as EventStatus}>{statusLabel[e.status]}</Badge>
+          {/* ── Event header ────────────────────────────────────────────────── */}
+          <div className="py-10 border-b border-border">
+            <div className="flex flex-wrap gap-2 mb-5">
+              <Badge variant={isPast ? 'closed' : e.status as EventStatus}>
+                {statusLabel[isPast ? 'closed' : e.status]}
+              </Badge>
               {isFull && <Badge variant="full">Full</Badge>}
               {!isFull && isNearlyFull && (
                 <Badge variant="nearlyFull">{remaining} spot{remaining !== 1 ? 's' : ''} left</Badge>
               )}
             </div>
 
-            <h1 className="text-title font-bold leading-tight">{e.name}</h1>
+            <h1 className="text-title md:text-display font-bold leading-[1.02] tracking-tight max-w-3xl">
+              {e.name}
+            </h1>
 
-            <div className="mt-5 flex flex-wrap gap-x-6 gap-y-2 text-sm text-muted-foreground">
-              <span className="flex items-center gap-1.5">
+            <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-3 text-sm">
+              <div className="flex items-center gap-2 text-muted-foreground">
                 <Calendar className="size-4" />
-                {formatDate(e.date)}
-              </span>
-              <span className="flex items-center gap-1.5">
+                <dt className="sr-only">Date</dt>
+                <dd className="text-foreground font-medium">{formatDate(e.date)}</dd>
+              </div>
+              <div className="flex items-center gap-2 text-muted-foreground">
                 <MapPin className="size-4" />
-                {e.location}
-              </span>
-            </div>
+                <dt className="sr-only">Location</dt>
+                <dd className="text-foreground font-medium">{e.location}</dd>
+              </div>
+            </dl>
 
             <LiveCapacity eventId={e.id} initialFilled={filled} capacity={e.capacity} />
 
             {e.description && (
-              <p className="mt-5 text-sm leading-relaxed text-muted-foreground max-w-2xl">
+              <p className="mt-6 text-base leading-relaxed text-muted-foreground max-w-2xl">
                 {e.description}
               </p>
             )}
           </div>
 
-          {/* ── Categories & Workouts ───────────────────────────────────── */}
-          <div className="py-8">
-            <div className="flex items-baseline justify-between mb-6">
-              <h2 className="font-semibold text-base">
-                {categories.length > 0 ? 'Categories' : 'Workouts'}
-              </h2>
-              {canRegister && (
-                <p className="text-sm text-muted-foreground">Click a category to register</p>
-              )}
-            </div>
+          {/* ── My schedule banner (registered athletes only) ────────────────── */}
+          {myScheduleEntries.length > 0 && (
+            <MyScheduleBanner entries={myScheduleEntries} />
+          )}
 
-            {categories.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-16 text-center rounded-xl border border-dashed border-border">
-                <p className="font-medium text-sm mb-1">No categories yet</p>
-                <p className="text-sm text-muted-foreground">The organizer hasn&apos;t set up categories for this event.</p>
-              </div>
-            ) : (
-              <div className="flex flex-col gap-5">
-                {categories.map((cat) => {
-                  const workouts    = (cat.workouts ?? []).sort((a, b) => a.order_num - b.order_num)
-                  const isTeam      = cat.type === 'team'
-                  const isRegistered = registeredCategoryIds.has(cat.id)
-                  // Clickable if the event is open, not full, and user hasn't registered for this category
-                  const clickable   = canRegister && !isRegistered
+          {/* ── Tab bar ─────────────────────────────────────────────────────── */}
+          <EventTabs eventId={e.id} activeTab={activeTab} />
 
-                  return (
-                    <div key={cat.id} className="relative group">
-                      {/* Clickable overlay — only when not yet registered */}
-                      {clickable && (
-                        <Link
-                          href={`/events/${e.id}/register?category=${cat.id}`}
-                          className="absolute inset-0 z-10 rounded-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                          aria-label={`Register for ${cat.name}`}
+          {/* ── Tab content ─────────────────────────────────────────────────── */}
+          <div className="py-10">
+
+            {/* Overview & Workouts tabs share the category list */}
+            {(activeTab === 'overview' || activeTab === 'workouts') && (
+              <>
+                <div className="flex items-baseline justify-between mb-6">
+                  <h2 className="text-subhead font-bold">
+                    {categories.length > 0 ? 'Categories' : 'Workouts'}
+                  </h2>
+                  {canRegister && activeTab === 'overview' && (
+                    <p className="text-sm text-muted-foreground">
+                      Pick one to register.
+                    </p>
+                  )}
+                </div>
+
+                {categories.length === 0 ? (
+                  <div className="py-14 max-w-md">
+                    <p className="font-semibold text-base">No categories yet.</p>
+                    <p className="mt-2 text-sm text-muted-foreground leading-relaxed">
+                      The organiser hasn&apos;t published divisions for this event. Check back — they
+                      usually go up a week or two before the date.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col gap-5">
+                    {categories.map((cat) => {
+                      const isRegistered = registeredCategoryIds.has(cat.id)
+                      // Registration CTA only on Overview tab
+                      const clickable    = canRegister && !isRegistered && activeTab === 'overview'
+                      const myReg        = myRegsByCategoryId.get(cat.id)
+                      const heatEntries  = (myReg?.heat_assignments ?? []).map((ha) => ({
+                        workoutName:  ha.heats?.workouts?.name ?? 'Workout',
+                        workoutOrder: ha.heats?.workouts?.order_num ?? 0,
+                        heatName:     ha.heats?.name ?? '',
+                        startTime:    ha.heats?.start_time ?? null,
+                      }))
+
+                      return (
+                        <CategoryCard
+                          key={cat.id}
+                          eventId={e.id}
+                          category={{ ...cat, workouts: cat.workouts ?? [] }}
+                          isRegistered={isRegistered}
+                          heatEntries={heatEntries}
+                          clickable={clickable}
+                          defaultExpanded={activeTab === 'workouts'}
                         />
-                      )}
-
-                      <div className={`rounded-xl border-2 bg-card shadow-card transition-all duration-150 overflow-hidden ${
-                        isRegistered
-                          ? 'border-success-300 bg-success-50/20'
-                          : clickable
-                            ? 'border-border group-hover:border-primary group-hover:bg-primary/5 group-hover:-translate-y-px group-hover:shadow-panel'
-                            : 'border-border opacity-75'
-                      }`}>
-
-                        {/* Category header */}
-                        <div className="flex items-center justify-between gap-4 px-6 pt-6 pb-4">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <h3 className={`font-semibold text-lg transition-colors ${clickable ? 'group-hover:text-primary' : ''}`}>
-                              {cat.name}
-                            </h3>
-                            <span className={`inline-flex items-center gap-1 rounded-md px-2 py-0.5 text-xs font-medium shrink-0 ${
-                              isTeam
-                                ? 'bg-brand-100 text-brand-700'
-                                : 'bg-neutral-100 text-neutral-600'
-                            }`}>
-                              {isTeam
-                                ? <><Users className="size-3" />Team</>
-                                : <><User  className="size-3" />Individual</>}
-                            </span>
-                          </div>
-                          {cat.capacity > 0 && (
-                            <span className="text-xs text-muted-foreground shrink-0">
-                              {cat.capacity} spots
-                            </span>
-                          )}
-                        </div>
-
-                        {/* Workouts */}
-                        {workouts.length > 0 && (
-                          <div className="px-6 pb-4 flex flex-col gap-3">
-                            {workouts.map((w) => {
-                              const { label, Icon } = scoringMeta[w.scoring_type]
-                              return (
-                                <div key={w.id} className="rounded-lg border border-border bg-background p-4">
-                                  <div className="flex items-start justify-between gap-3 mb-2">
-                                    <div>
-                                      <span className="text-xs font-medium text-muted-foreground uppercase tracking-widest">
-                                        Workout {w.order_num}
-                                      </span>
-                                      <h4 className="font-semibold text-sm mt-0.5">{w.name}</h4>
-                                    </div>
-                                    <span className="flex items-center gap-1 text-xs font-medium text-muted-foreground bg-muted rounded px-2 py-1 shrink-0">
-                                      <Icon className="size-3" />
-                                      {label}
-                                    </span>
-                                  </div>
-                                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                                    {w.description}
-                                  </p>
-                                </div>
-                              )
-                            })}
-                          </div>
-                        )}
-
-                        {workouts.length === 0 && (
-                          <p className="px-6 pb-4 text-sm text-muted-foreground italic">
-                            Workouts not yet announced.
-                          </p>
-                        )}
-
-                        {/* Footer row */}
-                        <div className={`flex items-center justify-between px-6 py-4 border-t border-border transition-colors ${
-                          isRegistered
-                            ? 'bg-success-50/30'
-                            : clickable
-                              ? 'bg-muted/40 group-hover:bg-primary/10'
-                              : 'bg-muted/20'
-                        }`}>
-                          <span className="text-sm text-muted-foreground">
-                            {isTeam ? 'Team registration' : 'Individual registration'}
-                          </span>
-                          {isRegistered ? (
-                            <span className="flex items-center gap-1.5 text-sm font-medium text-success-700">
-                              <CheckCircle2 className="size-4" />
-                              Registered
-                            </span>
-                          ) : clickable ? (
-                            <span className="flex items-center gap-1 text-sm font-medium text-muted-foreground group-hover:text-primary transition-colors">
-                              Register
-                              <ArrowRight className="size-4 group-hover:translate-x-0.5 transition-transform" />
-                            </span>
-                          ) : null}
-                        </div>
-
-                        {/* Your schedule — heat assignments for this registration */}
-                        {isRegistered && (() => {
-                          const myReg = myRegsByCategoryId.get(cat.id)
-                          const assignments = myReg?.heat_assignments ?? []
-                          if (assignments.length === 0) return null
-                          return (
-                            <div className="px-6 py-4 border-t border-border bg-success-50/10">
-                              <p className="text-xs font-medium text-muted-foreground uppercase tracking-widest mb-2">
-                                Your schedule
-                              </p>
-                              <div className="flex flex-col gap-1">
-                                {assignments
-                                  .slice()
-                                  .sort((a, b) => (a.heats?.workouts?.order_num ?? 0) - (b.heats?.workouts?.order_num ?? 0))
-                                  .map((ha, i) => (
-                                    <div key={i} className="flex items-center gap-2 text-sm">
-                                      <span className="text-muted-foreground w-24 truncate">
-                                        {ha.heats?.workouts?.name ?? `Workout ${i + 1}`}
-                                      </span>
-                                      <span className="font-medium">{ha.heats?.name}</span>
-                                      {ha.heats?.start_time && (
-                                        <span className="text-muted-foreground text-xs">
-                                          · {new Date(ha.heats.start_time).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })}
-                                        </span>
-                                      )}
-                                    </div>
-                                  ))}
-                              </div>
-                            </div>
-                          )
-                        })()}
-                      </div>
-                    </div>
-                  )
-                })}
-              </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </>
             )}
+
+            {/* Schedule tab */}
+            {activeTab === 'schedule' && scheduleCategories && (
+              <EventScheduleTab categories={scheduleCategories} />
+            )}
+
           </div>
         </div>
       </main>
