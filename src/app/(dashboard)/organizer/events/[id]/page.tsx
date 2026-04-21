@@ -12,24 +12,56 @@ export default async function OrganizerEventOverview({ params }: Props) {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  const { data: event } = await supabase
-    .from('events')
-    .select('id, name, location, date, description, status, capacity, registrations(count)')
-    .eq('id', id)
-    .eq('organizer_id', user.id)
-    .single()
+  const [{ data: event }, { data: categories }] = await Promise.all([
+    supabase
+      .from('events')
+      .select('id, name, location, date, description, status, capacity, registrations(count)')
+      .eq('id', id)
+      .eq('organizer_id', user.id)
+      .single(),
+    supabase
+      .from('categories')
+      .select('id, capacity')
+      .eq('event_id', id),
+  ])
 
   if (!event) notFound()
 
   const filled = (event as Event & { registrations: { count: number }[] }).registrations?.[0]?.count ?? 0
+  const cap = (event as Event).capacity
+
+  // Derive total capacity from categories:
+  // null  → no categories, user edits freely
+  // 0     → any category is unlimited → whole event is unlimited
+  // n>0   → sum of all category capacities
+  const cats = categories ?? []
+  let lockedCapacity: number | null = null
+  if (cats.length > 0) {
+    if (cats.some((c) => c.capacity === 0)) {
+      lockedCapacity = 0
+    } else {
+      lockedCapacity = cats.reduce((sum, c) => sum + c.capacity, 0)
+    }
+  }
 
   return (
     <main className="max-w-2xl mx-auto px-page-x py-10">
-      <div className="flex items-center justify-between mb-8">
-        <h1 className="text-xl font-semibold">Overview</h1>
-        <p className="text-sm text-muted-foreground">{filled} registration{filled !== 1 ? 's' : ''}</p>
-      </div>
-      <EventOverviewForm event={event as Event} />
+      <header className="pb-8 mb-8 border-b border-border flex items-end justify-between gap-6">
+        <div>
+          <h1 className="text-heading font-bold tracking-tight">Overview</h1>
+          <p className="mt-2 text-sm text-muted-foreground">
+            The basics athletes see when they land on this event.
+          </p>
+        </div>
+        <div className="text-right tabular-nums shrink-0">
+          <p className="text-subhead font-bold leading-none">{filled}</p>
+          <p className="text-xs text-muted-foreground mt-1">
+            {cap > 0 ? `of ${cap} registered` : `registration${filled !== 1 ? 's' : ''}`}
+          </p>
+        </div>
+      </header>
+
+      <EventOverviewForm event={event as Event} lockedCapacity={lockedCapacity} />
     </main>
   )
 }

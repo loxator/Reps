@@ -1,6 +1,6 @@
 'use client'
 
-import { CheckCircle2 } from 'lucide-react'
+import { CheckCircle2, Info } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useEventOverviewForm } from './use-event-overview-form'
 import type { Event } from '@/types'
@@ -10,7 +10,13 @@ type EditableEvent = Pick<Event, 'id' | 'name' | 'location' | 'date' | 'descript
 const inputClass =
   'w-full border border-border rounded-lg px-3 py-2.5 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary'
 
-export function EventOverviewForm({ event }: { event: EditableEvent }) {
+export function EventOverviewForm({
+  event,
+  lockedCapacity,
+}: {
+  event: EditableEvent
+  lockedCapacity: number | null
+}) {
   const {
     name, setName,
     location, setLocation,
@@ -20,7 +26,7 @@ export function EventOverviewForm({ event }: { event: EditableEvent }) {
     status, setStatus,
     isDirty, saving, saved, error,
     handleSave,
-  } = useEventOverviewForm(event)
+  } = useEventOverviewForm(event, lockedCapacity)
 
   return (
     <div className="flex flex-col gap-5">
@@ -57,8 +63,28 @@ export function EventOverviewForm({ event }: { event: EditableEvent }) {
         <label className="text-sm text-muted-foreground block mb-1.5">
           Total capacity <span className="text-xs">(0 = unlimited)</span>
         </label>
-        <input type="number" min="0" value={capacity} onChange={(e) => setCapacity(e.target.value)}
-          className={inputClass} />
+
+        {lockedCapacity === null ? (
+          <input
+            type="number"
+            min="0"
+            value={capacity}
+            onChange={(e) => setCapacity(e.target.value)}
+            className={inputClass}
+          />
+        ) : (
+          <>
+            <div className={`${inputClass} bg-muted text-foreground cursor-default select-none`}>
+              {lockedCapacity === 0 ? 'Unlimited' : lockedCapacity}
+            </div>
+            <p className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+              <Info className="size-3.5 mt-0.5 shrink-0" />
+              {lockedCapacity === 0
+                ? 'One or more categories allow unlimited registrations, so this event has no cap. To set a limit, update each category\'s spots.'
+                : 'Total capacity is the sum of your category spots. To change it, update the spots in each category.'}
+            </p>
+          </>
+        )}
       </div>
 
       <div>

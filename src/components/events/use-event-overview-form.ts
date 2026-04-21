@@ -6,7 +6,7 @@ import type { Event, EventStatus } from '@/types'
 
 type EditableEvent = Pick<Event, 'id' | 'name' | 'location' | 'date' | 'description' | 'status' | 'capacity'>
 
-export function useEventOverviewForm(initial: EditableEvent) {
+export function useEventOverviewForm(initial: EditableEvent, lockedCapacity: number | null) {
   const [name,        setName]        = useState(initial.name)
   const [location,    setLocation]    = useState(initial.location)
   const [date,        setDate]        = useState(initial.date)
@@ -24,7 +24,7 @@ export function useEventOverviewForm(initial: EditableEvent) {
     location !== initial.location ||
     date !== initial.date ||
     description !== (initial.description ?? '') ||
-    capacity !== String(initial.capacity) ||
+    (lockedCapacity === null && capacity !== String(initial.capacity)) ||
     status !== initial.status
 
   async function handleSave() {
@@ -39,7 +39,7 @@ export function useEventOverviewForm(initial: EditableEvent) {
         location:    location.trim(),
         date,
         description: description.trim() || null,
-        capacity:    parseInt(capacity) || 0,
+        capacity:    lockedCapacity !== null ? lockedCapacity : (parseInt(capacity) || 0),
         status,
       })
       .eq('id', initial.id)
