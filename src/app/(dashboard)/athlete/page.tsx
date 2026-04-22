@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
+import { ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
-import { Button } from '@/components/ui/button'
 import { PendingInvites } from '@/components/athlete/pending-invites'
 import { RegisteredEventCard, type RegisteredEvent } from '@/components/athlete/registered-event-card'
 import { EventCard } from '@/components/events/event-card'
@@ -13,7 +13,6 @@ export default async function AthleteDashboard() {
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) redirect('/login')
 
-  // ── Parallel fetches ───────────────────────────────────────────────────────
   const [profileRes, userRes, registrationsRes, invitesRes] = await Promise.all([
     supabase
       .from('athlete_profiles')
@@ -30,12 +29,7 @@ export default async function AthleteDashboard() {
     supabase
       .from('registrations')
       .select(`
-        id,
-        division,
-        team_name,
-        is_team,
-        status,
-        registered_at,
+        id, division, team_name, is_team, status, registered_at,
         events ( id, name, date, location, status ),
         heat_assignments (
           heats ( name, start_time, workouts ( name, order_num ) )
@@ -58,12 +52,10 @@ export default async function AthleteDashboard() {
   ])
 
   const firstName = ((userRes.data as { name?: string } | null)?.name ?? '').split(' ')[0] || null
-  const location = profileRes.data?.location ?? null
+  const location  = profileRes.data?.location ?? null
   const registrations = (registrationsRes.data ?? []) as unknown as RegisteredEvent[]
   const invites = invitesRes.data ?? []
 
-  // ── Events near the athlete's location ───────────────────────────────────
-  // Extract city (text before the first comma) for a broad match
   const city = location?.split(',')[0]?.trim() ?? null
 
   const registeredEventIds = registrations
@@ -80,7 +72,6 @@ export default async function AthleteDashboard() {
       .order('date', { ascending: true })
       .limit(6)
 
-    // Exclude events the athlete is already registered for
     if (registeredEventIds.length > 0) {
       query = query.not('id', 'in', `(${registeredEventIds.join(',')})`)
     }
@@ -89,14 +80,11 @@ export default async function AthleteDashboard() {
     nearbyEvents = (data ?? []) as Event[]
   }
 
-  const upcomingRegs = registrations.filter(
-    (r) => r.events && new Date(r.events.date) >= new Date()
-  )
-  const pastRegs = registrations.filter(
-    (r) => r.events && new Date(r.events.date) < new Date()
-  )
+  const now = new Date()
+  const upcomingRegs = registrations.filter((r) => r.events && new Date(r.events.date) >= now)
+  const pastRegs     = registrations.filter((r) => r.events && new Date(r.events.date) < now)
 
-  const nextReg = upcomingRegs[upcomingRegs.length - 1] ?? null // earliest upcoming
+  const nextReg       = upcomingRegs[upcomingRegs.length - 1] ?? null
   const nextEventDate = nextReg?.events?.date
     ? new Date(nextReg.events.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
     : null
@@ -104,96 +92,107 @@ export default async function AthleteDashboard() {
   return (
     <main className="max-w-5xl mx-auto px-page-x pt-24 pb-section">
 
-      {/* ── Greeting ───────────────────────────────────────────────────── */}
+      {/* ── Greeting ─────────────────────────────────────────────────────── */}
       <header className="pt-10 pb-10 border-b border-border">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-2">
+          Dashboard
+        </p>
         <h1 className="text-title md:text-display font-bold leading-[1.02] tracking-tight">
           {firstName ? `Hey ${firstName}.` : 'Hey there.'}
         </h1>
         <p className="mt-3 text-base text-muted-foreground max-w-prose">
           {upcomingRegs.length === 0
-            ? 'You haven\'t signed up for anything yet. Something below might change that.'
+            ? "You haven't signed up for anything yet. Something below might change that."
             : upcomingRegs.length === 1
-              ? `You\'ve got one event coming up${nextEventDate ? ` — ${nextEventDate}` : ''}.`
-              : `You\'ve got ${upcomingRegs.length} events coming up${nextEventDate ? ` — next on ${nextEventDate}` : ''}.`}
+              ? `You've got one event coming up${nextEventDate ? ` — ${nextEventDate}` : ''}.`
+              : `You've got ${upcomingRegs.length} events coming up${nextEventDate ? ` — next on ${nextEventDate}` : ''}.`}
         </p>
       </header>
 
-      {/* ── Pending invites ────────────────────────────────────────────── */}
+      {/* ── Pending invites ───────────────────────────────────────────────── */}
       {invites.length > 0 && (
         <section className="mt-10">
           <PendingInvites invites={invites} />
         </section>
       )}
 
-      {/* ── My events ──────────────────────────────────────────────────── */}
+      {/* ── My events ─────────────────────────────────────────────────────── */}
       <section className="mt-12">
 
-        {/* Upcoming */}
         {upcomingRegs.length > 0 && (
-          <>
+          <div className="mb-10">
             <div className="flex items-baseline justify-between mb-5">
-              <h2 className="text-subhead font-bold">Coming up</h2>
-              <p className="text-sm text-muted-foreground tabular-nums">
-                {upcomingRegs.length}
-              </p>
+              <h2 className="text-xl font-bold">Coming up</h2>
+              <span className="text-sm tabular-nums text-muted-foreground">{upcomingRegs.length}</span>
             </div>
-            <div className="grid sm:grid-cols-2 gap-4 mb-10">
+            <div className="grid sm:grid-cols-2 gap-4">
               {upcomingRegs.map((reg) => (
                 <RegisteredEventCard key={reg.id} reg={reg} />
               ))}
             </div>
-          </>
+          </div>
         )}
 
-        {/* Past */}
         {pastRegs.length > 0 && (
-          <>
+          <div className="mb-10">
             <div className="flex items-baseline justify-between mb-5">
-              <h2 className="text-subhead font-bold">Previously</h2>
-              <p className="text-sm text-muted-foreground tabular-nums">
-                {pastRegs.length}
-              </p>
+              <h2 className="text-xl font-bold">Previously</h2>
+              <span className="text-sm tabular-nums text-muted-foreground">{pastRegs.length}</span>
             </div>
             <div className="grid sm:grid-cols-2 gap-4 opacity-70">
               {pastRegs.map((reg) => (
                 <RegisteredEventCard key={reg.id} reg={reg} />
               ))}
             </div>
-          </>
+          </div>
         )}
 
-        {/* Empty — prose, not a dashed-border card */}
         {registrations.length === 0 && (
           <div className="max-w-md py-4">
-            <h2 className="text-subhead font-bold">Nothing on the calendar yet.</h2>
+            <h2 className="text-xl font-bold">Nothing on the calendar yet.</h2>
             <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
               When you register for an event it&apos;ll land here — along with your division,
               heat assignments, and check-in info once the organiser publishes them.
             </p>
-            <Button asChild variant="outline" size="sm" className="mt-5">
-              <Link href="/events">Find an event</Link>
-            </Button>
+            <Link
+              href="/events"
+              className="inline-flex items-center gap-2 mt-5 rounded-full bg-foreground text-background
+                         px-5 py-2.5 text-sm font-semibold
+                         hover:-translate-y-0.5 transition-transform duration-300 ease-[cubic-bezier(0.32,0.72,0,1)]"
+            >
+              Find an event
+              <span className="flex size-5 items-center justify-center rounded-full bg-white/10">
+                <ArrowRight className="size-3" strokeWidth={2} />
+              </span>
+            </Link>
           </div>
         )}
       </section>
 
-      {/* ── Events near you ────────────────────────────────────────────── */}
+      {/* ── Events near you ───────────────────────────────────────────────── */}
       {city ? (
-        <section className="mt-16">
-          <div className="flex items-baseline justify-between mb-5">
+        <section className="mt-16 pt-10 border-t border-border">
+          <div className="flex items-start justify-between gap-4 mb-6">
             <div>
-              <h2 className="text-subhead font-bold">Near {city}</h2>
+              <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground mb-1">
+                Nearby
+              </p>
+              <h2 className="text-xl font-bold">Near {city}</h2>
               <p className="mt-1 text-sm text-muted-foreground">
-                Open competitions in your area you haven&apos;t registered for yet.
+                Open competitions in your area.
               </p>
             </div>
-            <Button asChild variant="ghost" size="sm">
-              <Link href="/events">All events →</Link>
-            </Button>
+            <Link
+              href="/events"
+              className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors shrink-0 flex items-center gap-1"
+            >
+              All events
+              <ArrowRight className="size-3.5" strokeWidth={1.5} />
+            </Link>
           </div>
 
           {nearbyEvents.length > 0 ? (
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-5">
+            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
               {nearbyEvents.map((event) => (
                 <EventCard key={event.id} event={event} />
               ))}
@@ -209,15 +208,20 @@ export default async function AthleteDashboard() {
           )}
         </section>
       ) : (
-        <section className="mt-16 py-10 border-t border-border">
-          <h2 className="text-subhead font-bold">Tell us where you train.</h2>
+        <section className="mt-16 pt-10 border-t border-border">
+          <h2 className="text-xl font-bold">Tell us where you train.</h2>
           <p className="mt-3 text-sm text-muted-foreground max-w-md leading-relaxed">
             Add a location to your profile and we&apos;ll surface competitions nearby the moment
             they open — no chasing.
           </p>
-          <Button asChild variant="outline" size="sm" className="mt-5">
-            <Link href="/athlete/profile">Set my location</Link>
-          </Button>
+          <Link
+            href="/athlete/profile"
+            className="inline-flex items-center gap-2 mt-5 rounded-full border border-border bg-background
+                       px-5 py-2.5 text-sm font-semibold
+                       hover:bg-muted transition-colors duration-200"
+          >
+            Set my location
+          </Link>
         </section>
       )}
 
