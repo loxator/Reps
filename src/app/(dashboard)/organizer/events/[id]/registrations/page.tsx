@@ -42,18 +42,21 @@ export default async function RegistrationsPage({ params }: Props) {
     <main className="max-w-5xl mx-auto px-page-x py-10">
       <header className="pb-8 mb-8 border-b border-border flex flex-col md:flex-row md:items-end md:justify-between gap-4">
         <div>
-          <h1 className="text-heading font-bold tracking-tight">Registrations</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
-            Everyone signed up for <span className="font-medium text-foreground">{event.name}</span>.
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1">
+            {event.name}
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight">Registrations</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
+            Everyone signed up for this event.
           </p>
         </div>
-        <div className="flex gap-8 tabular-nums">
-          <div>
-            <p className="text-subhead font-bold leading-none">{rows.length}</p>
+        <div className="flex gap-8 tabular-nums shrink-0">
+          <div className="text-right">
+            <p className="text-2xl font-bold leading-none">{rows.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Registered</p>
           </div>
-          <div>
-            <p className="text-subhead font-bold leading-none">{checkedIn}</p>
+          <div className="text-right">
+            <p className="text-2xl font-bold leading-none">{checkedIn}</p>
             <p className="text-xs text-muted-foreground mt-1">Checked in</p>
           </div>
         </div>

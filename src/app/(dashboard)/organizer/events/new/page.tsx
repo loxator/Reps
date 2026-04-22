@@ -19,10 +19,13 @@ export default async function NewEventPage() {
         <ArrowLeft className="size-3.5" /> All events
       </Link>
 
-      <h1 className="text-title font-bold leading-[1.05] tracking-tight">
+      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-2">
+        Organizer
+      </p>
+      <h1 className="text-2xl font-bold tracking-tight">
         New event
       </h1>
-      <p className="mt-3 text-sm text-muted-foreground max-w-md leading-relaxed mb-10">
+      <p className="mt-2 text-sm text-muted-foreground max-w-md leading-relaxed mb-10">
         The basics first — name, date, location. You can add categories, workouts, and heats
         after you save. Nothing goes live until you open it for registration.
       </p>

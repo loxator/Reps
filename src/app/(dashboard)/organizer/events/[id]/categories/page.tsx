@@ -35,8 +35,11 @@ export default async function CategoriesPage({ params }: Props) {
   return (
     <main className="max-w-3xl mx-auto px-page-x py-10">
       <header className="pb-8 mb-8 border-b border-border">
-        <h1 className="text-heading font-bold tracking-tight">Categories &amp; workouts</h1>
-        <p className="mt-2 text-sm text-muted-foreground max-w-lg leading-relaxed">
+        <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1">
+          Event settings
+        </p>
+        <h1 className="text-2xl font-bold tracking-tight">Categories &amp; workouts</h1>
+        <p className="mt-1.5 text-sm text-muted-foreground max-w-lg leading-relaxed">
           Categories are the divisions athletes register for. Workouts are what each division
           actually competes in — ordered top to bottom as they&apos;ll run on the day.
         </p>

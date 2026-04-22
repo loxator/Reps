@@ -48,13 +48,16 @@ export default async function OrganizerEventOverview({ params }: Props) {
     <main className="max-w-2xl mx-auto px-page-x py-10">
       <header className="pb-8 mb-8 border-b border-border flex items-end justify-between gap-6">
         <div>
-          <h1 className="text-heading font-bold tracking-tight">Overview</h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1">
+            Event settings
+          </p>
+          <h1 className="text-2xl font-bold tracking-tight">Overview</h1>
+          <p className="mt-1.5 text-sm text-muted-foreground">
             The basics athletes see when they land on this event.
           </p>
         </div>
         <div className="text-right tabular-nums shrink-0">
-          <p className="text-subhead font-bold leading-none">{filled}</p>
+          <p className="text-2xl font-bold leading-none">{filled}</p>
           <p className="text-xs text-muted-foreground mt-1">
             {cap > 0 ? `of ${cap} registered` : `registration${filled !== 1 ? 's' : ''}`}
           </p>

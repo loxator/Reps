@@ -72,23 +72,23 @@ export default async function HeatPage({ params }: Props) {
     <main className="max-w-5xl mx-auto px-page-x py-10 overflow-x-hidden">
       <header className="pb-8 mb-8 border-b border-border flex flex-col md:flex-row md:items-end md:justify-between gap-6">
         <div className="min-w-0">
-          <p className="text-xs font-medium text-muted-foreground tabular-nums mb-2">
+          <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-1">
             Workout {workout.order_num} · {w.categories?.name}
           </p>
-          <h1 className="text-heading font-bold tracking-tight truncate">
+          <h1 className="text-2xl font-bold tracking-tight truncate">
             {workout.name}
           </h1>
-          <p className="mt-2 text-sm text-muted-foreground">
+          <p className="mt-1.5 text-sm text-muted-foreground">
             Assign athletes to heats and set start times.
           </p>
         </div>
         <div className="flex gap-8 tabular-nums shrink-0">
-          <div>
-            <p className="text-subhead font-bold leading-none">{heats.length}</p>
+          <div className="text-right">
+            <p className="text-2xl font-bold leading-none">{heats.length}</p>
             <p className="text-xs text-muted-foreground mt-1">Heats</p>
           </div>
-          <div>
-            <p className="text-subhead font-bold leading-none">{unassigned}</p>
+          <div className="text-right">
+            <p className="text-2xl font-bold leading-none">{unassigned}</p>
             <p className="text-xs text-muted-foreground mt-1">Unassigned</p>
           </div>
         </div>
