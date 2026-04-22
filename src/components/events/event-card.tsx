@@ -1,6 +1,5 @@
 import Link from 'next/link'
-import { MapPin, Calendar, ArrowRight, Users } from 'lucide-react'
-import { Badge } from '@/components/ui/badge'
+import { MapPin, Calendar } from 'lucide-react'
 import type { Event, EventStatus } from '@/types'
 
 const CARD_IMAGES = [
@@ -17,117 +16,62 @@ function imageFor(id: string) {
   return CARD_IMAGES[byte % CARD_IMAGES.length]
 }
 
-function formatDate(dateStr: string) {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    weekday: 'short',
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
-
-const statusLabel: Record<EventStatus, string> = {
-  open:   'Open',
-  closed: 'Closed',
-  draft:  'Draft',
-}
-
-function CapacityIndicator({ capacity, filled }: { capacity: number; filled: number }) {
-  if (capacity === 0) return null
-
-  const remaining = capacity - filled
-  const pct = filled / capacity
-
-  if (remaining <= 0) {
-    return <Badge variant="full">Full</Badge>
-  }
-  if (pct >= 0.8) {
-    return <Badge variant="nearlyFull">{remaining} spot{remaining !== 1 ? 's' : ''} left</Badge>
-  }
-  return (
-    <span className="flex items-center gap-1 text-xs text-muted-foreground">
-      <Users className="size-3" />
-      {remaining} / {capacity}
-    </span>
-  )
+const statusLabel: Record<EventStatus, string> = { open: 'Open', closed: 'Closed', draft: 'Draft' }
+const statusPill: Record<EventStatus, string> = {
+  open:   'bg-success-100 text-success-700',
+  closed: 'bg-neutral-100 text-neutral-500',
+  draft:  'bg-warning-100 text-warning-700',
 }
 
 export function EventCard({ event }: { event: Event }) {
   const filled = event.registrations?.[0]?.count ?? 0
   const isFull = event.capacity > 0 && filled >= event.capacity
-  const today = new Date().toISOString().split('T')[0]
+  const today  = new Date().toISOString().split('T')[0]
   const isPast = event.date < today
   const effectiveStatus: EventStatus = isPast ? 'closed' : event.status
 
   return (
     <Link
       href={`/events/${event.id}`}
-      className="group relative flex flex-col rounded-xl border border-border bg-card shadow-card
-                 hover:shadow-panel hover:-translate-y-0.5 hover:border-neutral-300
-                 transition-all duration-200 overflow-hidden"
+      className="group flex flex-col rounded-xl border border-border bg-card overflow-hidden shadow-card
+                 hover:shadow-panel hover:-translate-y-0.5
+                 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)]"
     >
-      {/* Event image */}
-      <div className="relative h-44 overflow-hidden shrink-0">
+      <div className="relative h-36 overflow-hidden shrink-0">
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={imageFor(event.id)}
           alt=""
           aria-hidden
-          className={`w-full h-full object-cover object-center transition-transform duration-500 group-hover:scale-105${isPast ? ' grayscale opacity-60' : ''}`}
+          className={`w-full h-full object-cover object-center transition-transform duration-700 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:scale-[1.06]${isPast ? ' grayscale opacity-60' : ''}`}
         />
-        <div className="absolute top-3 left-3">
-          <Badge variant={effectiveStatus}>{statusLabel[effectiveStatus]}</Badge>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent" />
+        <div className="absolute bottom-3 left-3">
+          <span className="flex items-center gap-1 text-xs font-semibold text-white/90 drop-shadow-sm">
+            <Calendar className="size-3 shrink-0" strokeWidth={1.5} />
+            {new Date(event.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' })}
+          </span>
+        </div>
+        <div className="absolute top-3 right-3">
+          <span className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${statusPill[effectiveStatus]}`}>
+            {statusLabel[effectiveStatus]}
+          </span>
         </div>
       </div>
 
-      {/* Card body */}
-      <div className="flex flex-col flex-1 p-card">
-        {/* Date */}
-        <span className="text-xs text-muted-foreground flex items-center gap-1.5 mb-3">
-          <Calendar className="size-3.5" />
-          {formatDate(event.date)}
-        </span>
-
-        {/* Event name */}
-        <h3 className="font-semibold text-base leading-snug mb-2 group-hover:text-primary transition-colors duration-150">
+      <div className="flex flex-col flex-1 p-4">
+        <h3 className="font-semibold text-sm leading-snug line-clamp-2 mb-auto group-hover:text-primary transition-colors duration-200">
           {event.name}
         </h3>
-
-        {/* Description */}
-        {event.description && (
-          <p className="text-sm text-muted-foreground leading-relaxed line-clamp-2 mb-4">
-            {event.description}
+        <div className="pt-3 space-y-1.5">
+          <p className="text-xs text-muted-foreground flex items-center gap-1 truncate">
+            <MapPin className="size-3 shrink-0" strokeWidth={1.5} />
+            {event.location}
           </p>
-        )}
-
-        {/* Location + capacity + arrow */}
-        <div className="mt-auto pt-4 border-t border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground flex items-center gap-1.5">
-              <MapPin className="size-3.5 shrink-0" />
-              {event.location}
-            </span>
-            <ArrowRight className="size-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-1 transition-all duration-150" />
-          </div>
-
-          {event.capacity > 0 && !isPast && (
-            <div className="mt-3">
-              <div className="flex items-center justify-between mb-1.5">
-                <CapacityIndicator capacity={event.capacity} filled={filled} />
-              </div>
-              <div className="h-1 w-full rounded-full bg-muted overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${
-                    isFull
-                      ? 'bg-danger-500'
-                      : filled / event.capacity >= 0.8
-                      ? 'bg-warning-500'
-                      : 'bg-success-500'
-                  }`}
-                  style={{ width: `${Math.min((filled / event.capacity) * 100, 100)}%` }}
-                />
-              </div>
-            </div>
+          {event.capacity > 0 && (
+            <p className={`text-xs font-medium ${isFull ? 'text-danger-600' : 'text-muted-foreground'}`}>
+              {isFull ? 'Full' : `${event.capacity - filled} / ${event.capacity} spots`}
+            </p>
           )}
         </div>
       </div>
