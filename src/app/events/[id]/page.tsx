@@ -2,7 +2,6 @@ import { notFound } from 'next/navigation'
 import { MapPin, Calendar } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { Navbar } from '@/components/layout/navbar'
-import { Badge } from '@/components/ui/badge'
 import { LiveCapacity } from '@/components/events/live-capacity'
 import { EventTabs } from '@/components/events/event-tabs'
 import { CategoryCard } from '@/components/events/category-card'
@@ -32,6 +31,12 @@ const statusLabel: Record<EventStatus, string> = {
   open:   'Open for registration',
   closed: 'Registration closed',
   draft:  'Draft',
+}
+
+const statusPill: Record<EventStatus, string> = {
+  open:   'bg-success-100/90 text-success-800',
+  closed: 'bg-neutral-100/90 text-neutral-600',
+  draft:  'bg-warning-100/90 text-warning-700',
 }
 
 const VALID_TABS = ['overview', 'workouts', 'schedule'] as const
@@ -108,7 +113,7 @@ export default async function EventPage({ params, searchParams }: Props) {
   }
   myScheduleEntries.sort((a, b) => a.workoutOrder - b.workoutOrder)
 
-  // ── Schedule tab data (fetched only when needed) ────────────────────────────
+  // ── Schedule tab data ────────────────────────────────────────────────────────
   type ScheduleCategoryRow = Parameters<typeof EventScheduleTab>[0]['categories'][number]
   let scheduleCategories: ScheduleCategoryRow[] | null = null
 
@@ -144,14 +149,15 @@ export default async function EventPage({ params, searchParams }: Props) {
   const isNearlyFull = e.capacity > 0 && filled / e.capacity >= 0.8
   const remaining    = e.capacity > 0 ? e.capacity - filled : null
   const canRegister  = e.status === 'open' && !isFull && !isPast
+  const effectiveStatus: EventStatus = isPast ? 'closed' : e.status
 
   return (
     <>
       <Navbar />
       <main className="pb-section">
 
-        {/* ── Banner ──────────────────────────────────────────────────────── */}
-        <div className="relative h-80 md:h-[28rem] overflow-hidden mt-14">
+        {/* ── Hero banner with overlaid title ────────────────────────────── */}
+        <div className="relative h-80 md:h-[36rem] overflow-hidden mt-14">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={bannerFor(e.id)}
@@ -159,78 +165,76 @@ export default async function EventPage({ params, searchParams }: Props) {
             aria-hidden
             className="w-full h-full object-cover object-center"
           />
-          {/* Subtle bottom fade so the title block below feels anchored */}
-          <div
-            className="absolute inset-0 pointer-events-none"
-            style={{
-              background:
-                'linear-gradient(to bottom, transparent 60%, rgba(0,0,0,0.15) 100%)',
-            }}
-          />
-        </div>
+          <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/25 to-black/80" />
 
-        <div className="mx-auto max-w-4xl px-page-x">
-
-          {/* ── Event header ────────────────────────────────────────────────── */}
-          <div className="py-10 border-b border-border">
-            <div className="flex flex-wrap gap-2 mb-5">
-              <Badge variant={isPast ? 'closed' : e.status as EventStatus}>
-                {statusLabel[isPast ? 'closed' : e.status]}
-              </Badge>
-              {isFull && <Badge variant="full">Full</Badge>}
-              {!isFull && isNearlyFull && (
-                <Badge variant="nearlyFull">{remaining} spot{remaining !== 1 ? 's' : ''} left</Badge>
+          {/* Overlaid text at bottom */}
+          <div className="absolute inset-x-0 bottom-0 max-w-4xl mx-auto px-page-x pb-8">
+            <div className="flex flex-wrap gap-2 mb-4">
+              <span className={`inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold backdrop-blur-sm ${statusPill[effectiveStatus]}`}>
+                {statusLabel[effectiveStatus]}
+              </span>
+              {isFull && (
+                <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-danger-100/90 text-danger-700">
+                  Full
+                </span>
+              )}
+              {!isFull && isNearlyFull && remaining !== null && (
+                <span className="inline-flex items-center rounded-full px-3 py-1 text-xs font-semibold bg-warning-100/90 text-warning-700">
+                  {remaining} spot{remaining !== 1 ? 's' : ''} left
+                </span>
               )}
             </div>
 
-            <h1 className="text-title md:text-display font-bold leading-[1.02] tracking-tight max-w-3xl">
+            <h1 className="text-3xl md:text-5xl font-bold text-white leading-tight tracking-tight drop-shadow-sm max-w-3xl">
               {e.name}
             </h1>
 
-            <dl className="mt-6 flex flex-wrap gap-x-8 gap-y-3 text-sm">
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <Calendar className="size-4" />
-                <dt className="sr-only">Date</dt>
-                <dd className="text-foreground font-medium">{formatDate(e.date)}</dd>
-              </div>
-              <div className="flex items-center gap-2 text-muted-foreground">
-                <MapPin className="size-4" />
-                <dt className="sr-only">Location</dt>
-                <dd className="text-foreground font-medium">{e.location}</dd>
-              </div>
-            </dl>
+            <div className="flex flex-wrap items-center gap-5 mt-4 text-white/75 text-sm">
+              <span className="flex items-center gap-1.5">
+                <Calendar className="size-3.5 shrink-0" strokeWidth={1.5} />
+                {formatDate(e.date)}
+              </span>
+              <span className="flex items-center gap-1.5">
+                <MapPin className="size-3.5 shrink-0" strokeWidth={1.5} />
+                {e.location}
+              </span>
+            </div>
+          </div>
+        </div>
 
+        {/* ── Content ─────────────────────────────────────────────────────── */}
+        <div className="mx-auto max-w-4xl px-page-x">
+
+          {/* Capacity bar + description */}
+          <div className="pt-8 pb-6 border-b border-border">
             <LiveCapacity eventId={e.id} initialFilled={filled} capacity={e.capacity} />
 
             {e.description && (
-              <p className="mt-6 text-base leading-relaxed text-muted-foreground max-w-2xl">
+              <p className="mt-5 text-base leading-relaxed text-muted-foreground max-w-2xl">
                 {e.description}
               </p>
             )}
           </div>
 
-          {/* ── My schedule banner (registered athletes only) ────────────────── */}
+          {/* My schedule (registered athletes) */}
           {myScheduleEntries.length > 0 && (
             <MyScheduleBanner entries={myScheduleEntries} />
           )}
 
-          {/* ── Tab bar ─────────────────────────────────────────────────────── */}
+          {/* Tab bar */}
           <EventTabs eventId={e.id} activeTab={activeTab} />
 
-          {/* ── Tab content ─────────────────────────────────────────────────── */}
+          {/* Tab content */}
           <div className="py-10">
 
-            {/* Overview & Workouts tabs share the category list */}
             {(activeTab === 'overview' || activeTab === 'workouts') && (
               <>
                 <div className="flex items-baseline justify-between mb-6">
-                  <h2 className="text-subhead font-bold">
+                  <h2 className="text-xl font-bold">
                     {categories.length > 0 ? 'Categories' : 'Workouts'}
                   </h2>
                   {canRegister && activeTab === 'overview' && (
-                    <p className="text-sm text-muted-foreground">
-                      Pick one to register.
-                    </p>
+                    <p className="text-sm text-muted-foreground">Pick one to register.</p>
                   )}
                 </div>
 
@@ -243,10 +247,9 @@ export default async function EventPage({ params, searchParams }: Props) {
                     </p>
                   </div>
                 ) : (
-                  <div className="flex flex-col gap-5">
+                  <div className="flex flex-col gap-4">
                     {categories.map((cat) => {
                       const isRegistered = registeredCategoryIds.has(cat.id)
-                      // Registration CTA only on Overview tab
                       const clickable    = canRegister && !isRegistered && activeTab === 'overview'
                       const myReg        = myRegsByCategoryId.get(cat.id)
                       const heatEntries  = (myReg?.heat_assignments ?? []).map((ha) => ({
@@ -273,7 +276,6 @@ export default async function EventPage({ params, searchParams }: Props) {
               </>
             )}
 
-            {/* Schedule tab */}
             {activeTab === 'schedule' && scheduleCategories && (
               <EventScheduleTab categories={scheduleCategories} />
             )}
