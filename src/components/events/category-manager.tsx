@@ -10,9 +10,9 @@ import {
 import type { ScoringType } from '@/types'
 
 const SCORING_TYPES: { value: ScoringType; label: string }[] = [
-  { value: 'time',   label: 'For Time' },
-  { value: 'reps',   label: 'Max Reps' },
-  { value: 'load',   label: 'Max Load' },
+  { value: 'time', label: 'For Time' },
+  { value: 'reps', label: 'Max Reps' },
+  { value: 'load', label: 'Max Load' },
   { value: 'rounds', label: 'AMRAP' },
 ]
 
@@ -20,8 +20,8 @@ const inputClass =
   'w-full border border-border rounded-lg px-3 py-2 text-sm bg-background focus:outline-none focus:ring-2 focus:ring-primary'
 
 type Props = {
-  eventId:    string
-  initial:    CategoryRow[]
+  eventId: string
+  initial: CategoryRow[]
 }
 
 export function CategoryManager({ eventId, initial }: Props) {
@@ -80,18 +80,18 @@ function CategoryCard({
   onAddWorkout, onEditWorkout, onCancelWorkout, onSaveWorkout,
   onDeleteWorkout, onWorkoutFieldChange,
 }: {
-  cat:               CategoryRow
-  saving:            string | null
-  onEdit:            () => void
-  onCancel:          () => void
-  onSave:            () => void
-  onDelete:          () => void
-  onFieldChange:     (key: keyof CategoryRow, val: CategoryRow[keyof CategoryRow]) => void
-  onAddWorkout:      () => void
-  onEditWorkout:     (id: string) => void
-  onCancelWorkout:   (id: string) => void
-  onSaveWorkout:     (w: WorkoutRow) => void
-  onDeleteWorkout:   (id: string) => void
+  cat: CategoryRow
+  saving: string | null
+  onEdit: () => void
+  onCancel: () => void
+  onSave: () => void
+  onDelete: () => void
+  onFieldChange: (key: keyof CategoryRow, val: CategoryRow[keyof CategoryRow]) => void
+  onAddWorkout: () => void
+  onEditWorkout: (id: string) => void
+  onCancelWorkout: (id: string) => void
+  onSaveWorkout: (w: WorkoutRow) => void
+  onDeleteWorkout: (id: string) => void
   onWorkoutFieldChange: (id: string, key: keyof WorkoutRow, val: WorkoutRow[keyof WorkoutRow]) => void
 }) {
   const isSaving = saving === cat.id
@@ -147,9 +147,8 @@ function CategoryCard({
           <div className="flex items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <span className="font-semibold">{cat.name}</span>
-              <span className={`text-xs rounded-md px-2 py-0.5 font-medium ${
-                cat.type === 'team' ? 'bg-brand-100 text-brand-700' : 'bg-neutral-100 text-neutral-600'
-              }`}>
+              <span className={`text-xs rounded-md px-2 py-0.5 font-medium ${cat.type === 'team' ? 'bg-brand-100 text-brand-700' : 'bg-neutral-100 text-neutral-600'
+                }`}>
                 {cat.type === 'team' ? `Team of ${cat.team_size}` : 'Individual'}
               </span>
               {cat.capacity > 0 && (
@@ -176,10 +175,10 @@ function CategoryCard({
             Workouts
           </p>
           <div className="flex flex-col gap-2">
-            {cat.workouts.map((w) => (
+            {cat.workouts.map((w: WorkoutRow) => (
               <WorkoutRow
                 key={w.id}
-                w={w}
+                w={w as WorkoutRow}
                 saving={saving}
                 onEdit={() => onEditWorkout(w.id)}
                 onCancel={() => onCancelWorkout(w.id)}
@@ -208,12 +207,12 @@ function CategoryCard({
 function WorkoutRow({
   w, saving, onEdit, onCancel, onSave, onDelete, onFieldChange,
 }: {
-  w:             WorkoutRow
-  saving:        string | null
-  onEdit:        () => void
-  onCancel:      () => void
-  onSave:        () => void
-  onDelete:      () => void
+  w: WorkoutRow
+  saving: string | null
+  onEdit: () => void
+  onCancel: () => void
+  onSave: () => void
+  onDelete: () => void
   onFieldChange: (key: keyof WorkoutRow, val: WorkoutRow[keyof WorkoutRow]) => void
 }) {
   const isSaving = saving === w.id

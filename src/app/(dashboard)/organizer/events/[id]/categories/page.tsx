@@ -26,8 +26,8 @@ export default async function CategoriesPage({ params }: Props) {
     .map((cat) => ({
       ...cat,
       isEditing: false,
-      isNew:     false,
-      workouts:  (cat.workouts ?? [])
+      isNew: false,
+      workouts: (cat.workouts ?? [])
         .sort((a: { order_num: number }, b: { order_num: number }) => a.order_num - b.order_num)
         .map((w: object) => ({ ...w, isEditing: false, isNew: false })),
     }))
@@ -45,7 +45,7 @@ export default async function CategoriesPage({ params }: Props) {
         </p>
       </header>
 
-      <CategoryManager eventId={id} initial={categories} />
+      <CategoryManager eventId={id} initial={categories as CategoryRow[]} />
     </main>
   )
 }

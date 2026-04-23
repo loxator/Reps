@@ -6,6 +6,7 @@ import { PendingInvites } from '@/components/athlete/pending-invites'
 import { RegisteredEventCard, type RegisteredEvent } from '@/components/athlete/registered-event-card'
 import { EventCard } from '@/components/events/event-card'
 import type { Event } from '@/types'
+import type { Invite } from '@/components/athlete/use-pending-invites'
 
 export default async function AthleteDashboard() {
   const supabase = await createClient()
@@ -52,9 +53,19 @@ export default async function AthleteDashboard() {
   ])
 
   const firstName = ((userRes.data as { name?: string } | null)?.name ?? '').split(' ')[0] || null
-  const location  = profileRes.data?.location ?? null
+  const location = profileRes.data?.location ?? null
   const registrations = (registrationsRes.data ?? []) as unknown as RegisteredEvent[]
-  const invites = invitesRes.data ?? []
+
+  const invites: Invite[] = (invitesRes.data ?? []).map((inv) => {
+    const reg = Array.isArray(inv.registrations) ? (inv.registrations[0] ?? null) : (inv.registrations ?? null)
+    const event = reg
+      ? (Array.isArray(reg.events) ? (reg.events[0] ?? null) : (reg.events ?? null))
+      : null
+    return {
+      ...inv,
+      registrations: reg ? { ...reg, events: event } : null,
+    }
+  })
 
   const city = location?.split(',')[0]?.trim() ?? null
 
@@ -82,9 +93,9 @@ export default async function AthleteDashboard() {
 
   const now = new Date()
   const upcomingRegs = registrations.filter((r) => r.events && new Date(r.events.date) >= now)
-  const pastRegs     = registrations.filter((r) => r.events && new Date(r.events.date) < now)
+  const pastRegs = registrations.filter((r) => r.events && new Date(r.events.date) < now)
 
-  const nextReg       = upcomingRegs[upcomingRegs.length - 1] ?? null
+  const nextReg = upcomingRegs[upcomingRegs.length - 1] ?? null
   const nextEventDate = nextReg?.events?.date
     ? new Date(nextReg.events.date).toLocaleDateString('en-GB', { day: 'numeric', month: 'long' })
     : null
