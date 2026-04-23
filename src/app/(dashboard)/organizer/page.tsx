@@ -2,6 +2,7 @@ import { redirect } from 'next/navigation'
 import Link from 'next/link'
 import { Plus, Calendar, MapPin, ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import type { Event, EventStatus } from '@/types'
 
 const CARD_IMAGES = [
@@ -37,11 +38,28 @@ export default async function OrganizerDashboard() {
 
   const { data: events } = await supabase
     .from('events')
-    .select('*, registrations(count)')
+    .select('*')
     .eq('organizer_id', user.id)
     .order('date', { ascending: false })
 
-  const list = (events ?? []) as (Event & { registrations: { count: number }[] })[]
+  const raw = events ?? []
+
+  let countMap = new Map<string, number>()
+  if (raw.length > 0) {
+    const { data: regRows } = await createAdminClient()
+      .from('registrations')
+      .select('event_id')
+      .in('event_id', raw.map((e) => e.id))
+
+    for (const row of regRows ?? []) {
+      countMap.set(row.event_id, (countMap.get(row.event_id) ?? 0) + 1)
+    }
+  }
+
+  const list = raw.map((e) => ({
+    ...e,
+    registrations: [{ count: countMap.get(e.id) ?? 0 }],
+  })) as (Event & { registrations: { count: number }[] })[]
 
   const now      = new Date()
   const upcoming = list.filter((e) => e.status === 'draft' || new Date(e.date) >= now)

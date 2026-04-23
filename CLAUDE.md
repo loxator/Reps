@@ -24,6 +24,7 @@ No test suite is configured.
 Required env vars (see `.env.local`):
 - `NEXT_PUBLIC_SUPABASE_URL`
 - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+- `SUPABASE_SERVICE_ROLE_KEY` — service role secret (Settings → API in Supabase dashboard); server-only, bypasses RLS for registration count queries
 
 ## Architecture
 
@@ -54,7 +55,7 @@ src/app/
 
 Types are in `src/types/index.ts`. Core entities: `User`, `Event`, `Category`, `Workout`, `Registration`, `Heat`, `HeatAssignment`. The Supabase schema with RLS policies lives in `supabase/schema.sql`.
 
-When querying registrations with athlete details, join via `.select('*, athlete:users(*)')`. Aggregate counts come back as `{ count: number }[]` from `.select('*, registrations(count)')`.
+When querying registrations with athlete details, join via `.select('*, athlete:users(*)')`. **Do not use `.select('*, registrations(count)')` for public-facing pages** — RLS filters the aggregate by `auth.uid()`, producing wrong counts for anonymous users and registered athletes. Instead, fetch counts separately via `createAdminClient()` (see `src/lib/supabase/admin.ts`) and patch them as `registrations: [{ count: n }]`.
 
 ### Component organisation
 

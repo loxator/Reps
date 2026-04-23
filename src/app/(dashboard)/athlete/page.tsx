@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { ArrowRight } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { PendingInvites } from '@/components/athlete/pending-invites'
 import { RegisteredEventCard, type RegisteredEvent } from '@/components/athlete/registered-event-card'
 import { EventCard } from '@/components/events/event-card'
@@ -77,7 +78,7 @@ export default async function AthleteDashboard() {
   if (city) {
     let query = supabase
       .from('events')
-      .select('*, registrations(count)')
+      .select('*')
       .eq('status', 'open')
       .ilike('location', `%${city}%`)
       .order('date', { ascending: true })
@@ -88,7 +89,24 @@ export default async function AthleteDashboard() {
     }
 
     const { data } = await query
-    nearbyEvents = (data ?? []) as Event[]
+    const rawNearby = data ?? []
+
+    let nearbyCountMap = new Map<string, number>()
+    if (rawNearby.length > 0) {
+      const { data: regRows } = await createAdminClient()
+        .from('registrations')
+        .select('event_id')
+        .in('event_id', rawNearby.map((e) => e.id))
+
+      for (const row of regRows ?? []) {
+        nearbyCountMap.set(row.event_id, (nearbyCountMap.get(row.event_id) ?? 0) + 1)
+      }
+    }
+
+    nearbyEvents = rawNearby.map((e) => ({
+      ...e,
+      registrations: [{ count: nearbyCountMap.get(e.id) ?? 0 }],
+    })) as Event[]
   }
 
   const now = new Date()

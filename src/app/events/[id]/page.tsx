@@ -1,6 +1,7 @@
 import { notFound } from 'next/navigation'
 import { MapPin, Calendar } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { Navbar } from '@/components/layout/navbar'
 import { LiveCapacity } from '@/components/events/live-capacity'
 import { EventTabs } from '@/components/events/event-tabs'
@@ -59,14 +60,18 @@ export default async function EventPage({ params, searchParams }: Props) {
 
   const { data: event } = await supabase
     .from('events')
-    .select('*, registrations(count), categories(*, workouts(*))')
+    .select('*, categories(*, workouts(*))')
     .eq('id', id)
     .single()
 
   if (!event) notFound()
 
+  const { count: filledCount } = await createAdminClient()
+    .from('registrations')
+    .select('*', { count: 'exact', head: true })
+    .eq('event_id', id)
+
   const e = event as Event & {
-    registrations: { count: number }[]
     categories: (Category & { workouts: Workout[] })[]
   }
 
@@ -144,7 +149,7 @@ export default async function EventPage({ params, searchParams }: Props) {
   // ── Derived booleans ─────────────────────────────────────────────────────────
   const today        = new Date().toISOString().split('T')[0]
   const isPast       = e.date < today
-  const filled       = e.registrations?.[0]?.count ?? 0
+  const filled       = filledCount ?? 0
   const isFull       = e.capacity > 0 && filled >= e.capacity
   const isNearlyFull = e.capacity > 0 && filled / e.capacity >= 0.8
   const remaining    = e.capacity > 0 ? e.capacity - filled : null
