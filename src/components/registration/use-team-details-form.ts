@@ -57,7 +57,7 @@ export function useTeamDetailsForm(
             ...m,
             status: 'found',
             userId: data.id,
-            name:   m.name.trim() || data.name,
+            name:   data.name,   // always use the name from their account
           }
         })
       )
@@ -118,6 +118,23 @@ export function useTeamDetailsForm(
         setError(memberErr.message)
         setLoading(false)
         return
+      }
+
+      // Invite new members (no existing account) via Supabase auth invite.
+      // Existing members see the invite on their dashboard — no email needed.
+      const newEmails = members
+        .filter((m) => m.status === 'not-found' && m.email.trim())
+        .map((m) => m.email.trim())
+
+      if (newEmails.length > 0) {
+        fetch('/api/invite', {
+          method:  'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body:    JSON.stringify({
+            emails:     newEmails,
+            redirectTo: `${window.location.origin}/athlete`,
+          }),
+        }).catch(() => {/* best-effort */})
       }
     }
 

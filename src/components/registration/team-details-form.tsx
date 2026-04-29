@@ -150,13 +150,17 @@ function MemberBlock({
           value={member.name}
           onChange={(e) => onChange({ name: e.target.value })}
           placeholder="Full name"
-          className={inputClass}
+          readOnly={member.status === 'found'}
+          className={`${inputClass} ${member.status === 'found' ? 'bg-muted text-muted-foreground cursor-default select-none' : ''}`}
         />
+        {member.status === 'found' && (
+          <p className="text-xs text-muted-foreground mt-1.5">Name pulled from their account.</p>
+        )}
       </div>
 
       {member.status === 'not-found' && (
         <p className="text-xs text-muted-foreground -mt-1">
-          They don&apos;t have a reps account yet. We&apos;ll prompt them to sign up and accept your invite.
+          They don&apos;t have a reps. account yet. We&apos;ll send them an invite to sign up.
         </p>
       )}
     </div>
