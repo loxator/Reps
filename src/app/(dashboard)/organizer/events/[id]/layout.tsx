@@ -1,6 +1,6 @@
 import { notFound, redirect } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Settings, LayoutList, Users, Flame } from 'lucide-react'
+import { ArrowLeft, Settings, LayoutList, Users, Flame, BarChart2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/server'
 import { Badge } from '@/components/ui/badge'
 import type { EventStatus } from '@/types'
@@ -74,6 +74,18 @@ export default async function OrganizerEventLayout({ children, params }: Props) 
                   key={w.id}
                   href={`${base}/heats/${w.id}`}
                   icon={Flame}
+                  label={w.name}
+                />
+              ))}
+
+              <p className="text-xs text-muted-foreground uppercase tracking-widest px-2 pt-4 pb-1">
+                Scores
+              </p>
+              {allWorkouts.map((w) => (
+                <SidebarLink
+                  key={`scores-${w.id}`}
+                  href={`${base}/scores/${w.id}`}
+                  icon={BarChart2}
                   label={w.name}
                 />
               ))}

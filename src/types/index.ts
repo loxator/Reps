@@ -104,3 +104,12 @@ export interface HeatAssignment {
   assigned_at: string
   heats?: Heat & { workouts?: Pick<Workout, 'id' | 'name' | 'order_num'> }
 }
+
+export interface WorkoutScore {
+  id: string
+  registration_id: string
+  workout_id: string
+  score_value: number
+  notes: string | null
+  recorded_at: string
+}

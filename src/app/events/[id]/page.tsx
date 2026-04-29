@@ -8,7 +8,9 @@ import { EventTabs } from '@/components/events/event-tabs'
 import { CategoryCard } from '@/components/events/category-card'
 import { MyScheduleBanner, type ScheduleEntry } from '@/components/events/my-schedule-banner'
 import { EventScheduleTab } from '@/components/events/event-schedule-tab'
-import type { Event, Category, Workout, EventStatus, HeatAssignment } from '@/types'
+import { LeaderboardTab, type LeaderboardCategory } from '@/components/events/leaderboard-tab'
+import { isLowerBetter } from '@/components/events/use-score-manager'
+import type { Event, Category, Workout, EventStatus, HeatAssignment, ScoringType } from '@/types'
 
 const BANNER_IMAGES = [
   'https://images.unsplash.com/photo-1571019614242-c5c5dee9f50b?w=1800&h=900&fit=crop&q=85',
@@ -40,7 +42,7 @@ const statusPill: Record<EventStatus, string> = {
   draft:  'bg-warning-100/90 text-warning-700',
 }
 
-const VALID_TABS = ['overview', 'workouts', 'schedule'] as const
+const VALID_TABS = ['overview', 'workouts', 'schedule', 'results'] as const
 type TabKey = typeof VALID_TABS[number]
 
 type Props = {
@@ -144,6 +146,93 @@ export default async function EventPage({ params, searchParams }: Props) {
       .order('order_num')
 
     scheduleCategories = (data ?? []) as unknown as ScheduleCategoryRow[]
+  }
+
+  // ── Results tab data ────────────────────────────────────────────────────────
+  let leaderboardCategories: LeaderboardCategory[] | null = null
+
+  if (activeTab === 'results') {
+    const allWorkoutIds = categories.flatMap((c) =>
+      (c.workouts ?? []).map((w: Workout) => w.id)
+    )
+
+    const { data: scoresData } = allWorkoutIds.length > 0
+      ? await createAdminClient()
+          .from('workout_scores')
+          .select(`
+            score_value,
+            registration_id,
+            workout_id,
+            registration:registrations(
+              id, team_name, is_team, category_id,
+              athlete:users!registrations_athlete_id_fkey(name)
+            )
+          `)
+          .in('workout_id', allWorkoutIds)
+      : { data: [] }
+
+    type ScoreDataRow = {
+      score_value: number
+      registration_id: string
+      workout_id: string
+      registration: {
+        id: string
+        team_name: string | null
+        is_team: boolean
+        category_id: string | null
+        athlete: { name: string } | null
+      } | null
+    }
+
+    const rows = (scoresData ?? []) as unknown as ScoreDataRow[]
+
+    // Group by workout_id
+    const scoresByWorkout = new Map<string, typeof rows>()
+    for (const row of rows) {
+      if (!scoresByWorkout.has(row.workout_id)) scoresByWorkout.set(row.workout_id, [])
+      scoresByWorkout.get(row.workout_id)!.push(row)
+    }
+
+    leaderboardCategories = categories.map((cat) => {
+      const workoutsWithScores = (cat.workouts ?? []).map((w: Workout) => {
+        const workoutRows = scoresByWorkout.get(w.id) ?? []
+        const scoringType = w.scoring_type as ScoringType
+
+        // Build unranked entries then rank them
+        const unranked = workoutRows.map((row) => ({
+          regId:       row.registration_id,
+          athleteName: row.registration?.athlete?.name ?? 'Unknown',
+          teamName:    row.registration?.team_name ?? null,
+          isTeam:      row.registration?.is_team ?? false,
+          score:       row.score_value,
+        }))
+
+        unranked.sort((a, b) =>
+          isLowerBetter(scoringType) ? a.score - b.score : b.score - a.score
+        )
+
+        let rank = 1
+        const entries = unranked.map((entry, i) => {
+          if (i > 0 && unranked[i].score !== unranked[i - 1].score) rank = i + 1
+          return { ...entry, rank }
+        })
+
+        return {
+          id:          w.id,
+          name:        w.name,
+          orderNum:    w.order_num,
+          scoringType,
+          entries,
+        }
+      })
+
+      return {
+        id:       cat.id,
+        name:     cat.name,
+        orderNum: cat.order_num,
+        workouts: workoutsWithScores,
+      }
+    })
   }
 
   // ── Derived booleans ─────────────────────────────────────────────────────────
@@ -283,6 +372,10 @@ export default async function EventPage({ params, searchParams }: Props) {
 
             {activeTab === 'schedule' && scheduleCategories && (
               <EventScheduleTab categories={scheduleCategories} />
+            )}
+
+            {activeTab === 'results' && leaderboardCategories && (
+              <LeaderboardTab categories={leaderboardCategories} />
             )}
 
           </div>

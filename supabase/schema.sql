@@ -107,3 +107,15 @@ CREATE TABLE public.workouts (
   CONSTRAINT workouts_event_id_fkey FOREIGN KEY (event_id) REFERENCES public.events(id),
   CONSTRAINT workouts_category_id_fkey FOREIGN KEY (category_id) REFERENCES public.categories(id)
 );
+CREATE TABLE public.workout_scores (
+  id uuid NOT NULL DEFAULT uuid_generate_v4(),
+  registration_id uuid NOT NULL,
+  workout_id uuid NOT NULL,
+  score_value numeric NOT NULL,
+  notes text,
+  recorded_at timestamp with time zone DEFAULT now(),
+  CONSTRAINT workout_scores_pkey PRIMARY KEY (id),
+  CONSTRAINT workout_scores_registration_fkey FOREIGN KEY (registration_id) REFERENCES public.registrations(id) ON DELETE CASCADE,
+  CONSTRAINT workout_scores_workout_fkey FOREIGN KEY (workout_id) REFERENCES public.workouts(id) ON DELETE CASCADE,
+  CONSTRAINT workout_scores_unique UNIQUE (registration_id, workout_id)
+);

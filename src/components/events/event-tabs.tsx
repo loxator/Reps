@@ -2,9 +2,10 @@ import Link from 'next/link'
 import { cn } from '@/lib/utils'
 
 const TABS = [
-  { key: 'overview', label: 'Overview' },
-  { key: 'workouts', label: 'Workouts' },
-  { key: 'schedule', label: 'Schedule' },
+  { key: 'overview',  label: 'Overview' },
+  { key: 'workouts',  label: 'Workouts' },
+  { key: 'schedule',  label: 'Schedule' },
+  { key: 'results',   label: 'Results' },
 ]
 
 export function EventTabs({ eventId, activeTab }: { eventId: string; activeTab: string }) {
