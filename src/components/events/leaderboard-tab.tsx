@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
 import { displayScore } from './use-score-manager'
+import { useLeaderboardTab } from './use-leaderboard-tab'
 import type { ScoringType } from '@/types'
 
 export type LeaderboardWorkout = {
@@ -34,24 +34,17 @@ function RankBadge({ rank }: { rank: number }) {
 }
 
 export function LeaderboardTab({ categories }: { categories: LeaderboardCategory[] }) {
-  const [activeCatId, setActiveCatId] = useState(categories[0]?.id ?? '')
-  const [activeWorkoutId, setActiveWorkoutId] = useState<string>('')
+  const {
+    activeCatId,
+    activeWorkoutId,
+    setActiveWorkoutId,
+    workouts,
+    activeWorkout,
+    hasAnyScores,
+    switchCat,
+  } = useLeaderboardTab(categories)
 
-  const activeCat = categories.find((c) => c.id === activeCatId)
-  const workouts = activeCat?.workouts ?? []
-
-  const effectiveWorkoutId = activeWorkoutId && workouts.some((w) => w.id === activeWorkoutId)
-    ? activeWorkoutId
-    : workouts[0]?.id ?? ''
-
-  const activeWorkout = workouts.find((w) => w.id === effectiveWorkoutId)
-
-  function switchCat(id: string) {
-    setActiveCatId(id)
-    setActiveWorkoutId('')
-  }
-
-  if (categories.length === 0) {
+  if (categories.length === 0 || !hasAnyScores) {
     return (
       <div className="py-20 text-center">
         <p className="font-semibold">No results yet.</p>
@@ -62,24 +55,13 @@ export function LeaderboardTab({ categories }: { categories: LeaderboardCategory
     )
   }
 
-  const hasAnyScores = categories.some((c) =>
-    c.workouts.some((w) => w.entries.length > 0)
-  )
-
-  if (!hasAnyScores) {
-    return (
-      <div className="py-20 text-center">
-        <p className="font-semibold">No results yet.</p>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Scores will appear here once the organiser enters them.
-        </p>
-      </div>
-    )
-  }
+  const effectiveWorkoutId =
+    activeWorkoutId && workouts.some((w) => w.id === activeWorkoutId)
+      ? activeWorkoutId
+      : workouts[0]?.id ?? ''
 
   return (
     <div>
-      {/* Category pills */}
       {categories.length > 1 && (
         <div className="flex flex-wrap gap-1.5 mb-6">
           {categories.map((cat) => (
@@ -98,7 +80,6 @@ export function LeaderboardTab({ categories }: { categories: LeaderboardCategory
         </div>
       )}
 
-      {/* Workout pills */}
       {workouts.length > 1 && (
         <div className="flex flex-wrap gap-1.5 mb-6">
           {workouts.map((w) => (
@@ -117,7 +98,6 @@ export function LeaderboardTab({ categories }: { categories: LeaderboardCategory
         </div>
       )}
 
-      {/* Leaderboard */}
       {activeWorkout ? (
         <WorkoutLeaderboard workout={activeWorkout} />
       ) : (
@@ -140,43 +120,36 @@ function WorkoutLeaderboard({ workout }: { workout: LeaderboardWorkout }) {
   }
 
   return (
-    <div>
-      <div className="overflow-x-auto rounded-xl border border-border">
-        <table className="w-full text-sm">
-          <thead>
-            <tr className="border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground uppercase tracking-widest">
-              <th className="text-center px-4 py-3 w-14">Rank</th>
-              <th className="text-left px-4 py-3">Athlete</th>
-              <th className="text-right px-4 py-3">Score</th>
+    <div className="overflow-x-auto rounded-xl border border-border">
+      <table className="w-full text-sm">
+        <thead>
+          <tr className="border-b border-border bg-muted/40 text-xs font-medium text-muted-foreground uppercase tracking-widest">
+            <th className="text-center px-4 py-3 w-14">Rank</th>
+            <th className="text-left px-4 py-3">Athlete</th>
+            <th className="text-right px-4 py-3">Score</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-border">
+          {workout.entries.map((entry) => (
+            <tr key={entry.regId} className="bg-card hover:bg-muted/20 transition-colors">
+              <td className="px-4 py-3 text-center">
+                <RankBadge rank={entry.rank} />
+              </td>
+              <td className="px-4 py-3">
+                <p className="font-medium">
+                  {entry.isTeam ? (entry.teamName ?? entry.athleteName) : entry.athleteName}
+                </p>
+                {entry.isTeam && entry.teamName && (
+                  <p className="text-xs text-muted-foreground">Cap: {entry.athleteName}</p>
+                )}
+              </td>
+              <td className="px-4 py-3 text-right tabular-nums font-medium">
+                {displayScore(entry.score, workout.scoringType)}
+              </td>
             </tr>
-          </thead>
-          <tbody className="divide-y divide-border">
-            {workout.entries.map((entry) => (
-              <tr
-                key={entry.regId}
-                className={`transition-colors ${
-                  entry.rank <= 3 ? 'bg-card' : 'bg-card hover:bg-muted/20'
-                }`}
-              >
-                <td className="px-4 py-3 text-center">
-                  <RankBadge rank={entry.rank} />
-                </td>
-                <td className="px-4 py-3">
-                  <p className="font-medium">
-                    {entry.isTeam ? (entry.teamName ?? entry.athleteName) : entry.athleteName}
-                  </p>
-                  {entry.isTeam && entry.teamName && (
-                    <p className="text-xs text-muted-foreground">Cap: {entry.athleteName}</p>
-                  )}
-                </td>
-                <td className="px-4 py-3 text-right tabular-nums font-medium">
-                  {displayScore(entry.score, workout.scoringType)}
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+          ))}
+        </tbody>
+      </table>
     </div>
   )
 }

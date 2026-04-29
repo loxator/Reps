@@ -1,25 +1,25 @@
 'use client'
 
-import { useState } from 'react'
 import Link from 'next/link'
 import {
   Users, User, ArrowRight, CheckCircle2, ChevronDown, ChevronUp,
   Clock, Repeat, Dumbbell, RefreshCw,
 } from 'lucide-react'
+import { useCategoryCard } from './use-category-card'
 import type { Category, Workout, ScoringType } from '@/types'
 
 const scoringMeta: Record<ScoringType, { label: string; Icon: React.ElementType; color: string }> = {
-  time:   { label: 'For Time',  Icon: Clock,     color: 'bg-brand-100 text-brand-700'   },
+  time:   { label: 'For Time',  Icon: Clock,     color: 'bg-brand-100 text-brand-700'    },
   reps:   { label: 'Max Reps',  Icon: Repeat,    color: 'bg-success-100 text-success-700' },
   load:   { label: 'Max Load',  Icon: Dumbbell,  color: 'bg-warning-100 text-warning-700' },
   rounds: { label: 'AMRAP',     Icon: RefreshCw, color: 'bg-neutral-100 text-neutral-600' },
 }
 
 export type HeatEntry = {
-  workoutName: string
+  workoutName:  string
   workoutOrder: number
-  heatName: string
-  startTime: string | null
+  heatName:     string
+  startTime:    string | null
 }
 
 type Props = {
@@ -39,14 +39,10 @@ export function CategoryCard({
   clickable,
   defaultExpanded = false,
 }: Props) {
-  const [expanded, setExpanded] = useState(defaultExpanded)
-
-  const workouts = (cat.workouts ?? []).sort((a, b) => a.order_num - b.order_num)
-  const isTeam   = cat.type === 'team'
+  const { expanded, toggle, workouts, isTeam } = useCategoryCard(cat, defaultExpanded)
 
   return (
     <div className="relative group">
-      {/* Registration overlay — sits below expand button (z-10 vs z-20) */}
       {clickable && (
         <Link
           href={`/events/${eventId}/register?category=${cat.id}`}
@@ -84,12 +80,12 @@ export function CategoryCard({
               <span className="text-xs text-muted-foreground tabular-nums">{cat.capacity} spots</span>
             )}
             <button
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setExpanded(v => !v) }}
+              onClick={toggle}
               className="relative z-20 flex items-center gap-1 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
             >
               {workouts.length} workout{workouts.length !== 1 ? 's' : ''}
               {expanded
-                ? <ChevronUp  className="size-3.5" strokeWidth={1.5} />
+                ? <ChevronUp   className="size-3.5" strokeWidth={1.5} />
                 : <ChevronDown className="size-3.5" strokeWidth={1.5} />}
             </button>
           </div>

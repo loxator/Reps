@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useRef } from 'react'
 import Link from 'next/link'
 import { ArrowRight, Calendar, MapPin, Users, Clock, BarChart2 } from 'lucide-react'
+import { useSuccessScreen } from './use-success-screen'
 
 export type TeamMemberRow = {
   id: string
@@ -42,7 +42,7 @@ const NEXT_STEPS = [
   {
     icon: Clock,
     title: 'Heat assignment coming',
-    body: 'The organiser will post heat times closer to the event. You\'ll see them on your dashboard and on the event page.',
+    body: "The organiser will post heat times closer to the event. You'll see them on your dashboard and on the event page.",
   },
   {
     icon: Users,
@@ -56,65 +56,8 @@ const NEXT_STEPS = [
   },
 ]
 
-// Lightweight confetti burst — pure CSS/DOM, no library
-function useConfetti(containerRef: React.RefObject<HTMLDivElement | null>) {
-  useEffect(() => {
-    const container = containerRef.current
-    if (!container) return
-
-    const COLORS = ['#22c55e', '#16a34a', '#4ade80', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899']
-    const COUNT = 48
-
-    const pieces: HTMLDivElement[] = []
-    for (let i = 0; i < COUNT; i++) {
-      const el = document.createElement('div')
-      const size = Math.random() * 6 + 4
-      const color = COLORS[Math.floor(Math.random() * COLORS.length)]
-      const x = Math.random() * 100        // % across container
-      const delay = Math.random() * 400    // ms
-      const duration = Math.random() * 800 + 1200  // ms
-      const endY = Math.random() * 80 + 40  // vh drop
-      const rotate = Math.random() * 720 - 360
-
-      el.style.cssText = `
-        position:fixed; top:20px; left:${x}%; width:${size}px; height:${size}px;
-        border-radius:${Math.random() > 0.5 ? '50%' : '2px'};
-        background-color:${color}; opacity:0; pointer-events:none; z-index:9999;
-        animation:confetti-fall ${duration}ms ${delay}ms cubic-bezier(0.25,0.46,0.45,0.94) forwards;
-        --end-y:${endY}vh; --rotate:${rotate}deg;
-      `
-
-      document.body.appendChild(el)
-      pieces.push(el)
-    }
-
-    // Inject keyframes once
-    if (!document.getElementById('confetti-style')) {
-      const style = document.createElement('style')
-      style.id = 'confetti-style'
-      style.textContent = `
-        @keyframes confetti-fall {
-          0%   { opacity: 1;   transform: translateY(0)              rotate(0deg); }
-          100% { opacity: 0;   transform: translateY(var(--end-y))   rotate(var(--rotate)); }
-        }
-      `
-      document.head.appendChild(style)
-    }
-
-    const timeout = setTimeout(() => {
-      pieces.forEach((el) => el.remove())
-    }, 2500)
-
-    return () => {
-      clearTimeout(timeout)
-      pieces.forEach((el) => el.remove())
-    }
-  }, [containerRef])
-}
-
 export function SuccessScreen({ event, registration, teamMembers }: Props) {
-  const containerRef = useRef<HTMLDivElement>(null)
-  useConfetti(containerRef)
+  const { containerRef } = useSuccessScreen()
 
   return (
     <div ref={containerRef} className="mx-auto max-w-5xl px-page-x pt-28 pb-section">
@@ -123,7 +66,6 @@ export function SuccessScreen({ event, registration, teamMembers }: Props) {
         {/* ── Left ──────────────────────────────────────────────────── */}
         <div className="md:col-span-7">
 
-          {/* Badge */}
           <div className="inline-flex items-center gap-2 rounded-full bg-success-50 ring-1 ring-success-200 px-3.5 py-1.5 mb-8 animate-fade-up [animation-delay:0ms]">
             <span className="size-2 rounded-full bg-success-500 animate-pulse" />
             <span className="text-xs font-semibold text-success-700 uppercase tracking-widest">
@@ -131,12 +73,10 @@ export function SuccessScreen({ event, registration, teamMembers }: Props) {
             </span>
           </div>
 
-          {/* Headline */}
           <h1 className="text-title md:text-display font-bold leading-[1.02] tracking-tight animate-fade-up [animation-delay:80ms]">
             You&apos;re in.
           </h1>
 
-          {/* Summary sentence */}
           <p className="mt-6 text-base text-muted-foreground leading-relaxed max-w-prose animate-fade-up [animation-delay:160ms]">
             Registered for{' '}
             <span className="font-semibold text-foreground">{event.name}</span>
@@ -149,7 +89,6 @@ export function SuccessScreen({ event, registration, teamMembers }: Props) {
             .
           </p>
 
-          {/* CTAs */}
           <div className="mt-8 flex flex-wrap gap-3 animate-fade-up [animation-delay:240ms]">
             <Link
               href="/athlete"
@@ -171,7 +110,6 @@ export function SuccessScreen({ event, registration, teamMembers }: Props) {
             </Link>
           </div>
 
-          {/* Team members */}
           {registration?.isTeam && teamMembers.length > 0 && (
             <div className="mt-12 animate-fade-up [animation-delay:320ms]">
               <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-4">
@@ -196,13 +134,12 @@ export function SuccessScreen({ event, registration, teamMembers }: Props) {
             </div>
           )}
 
-          {/* What's next */}
           <div className="mt-12 animate-fade-up [animation-delay:400ms]">
             <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-muted-foreground mb-6">
               What happens next
             </p>
             <ol className="flex flex-col gap-0 divide-y divide-border border-y border-border">
-              {NEXT_STEPS.map(({ icon: Icon, title, body }, i) => (
+              {NEXT_STEPS.map(({ icon: Icon, title, body }) => (
                 <li key={title} className="grid grid-cols-[2rem_1fr] gap-4 items-start py-5">
                   <div className="flex items-center justify-center size-7 rounded-full bg-muted shrink-0 mt-0.5">
                     <Icon className="size-3.5 text-muted-foreground" strokeWidth={1.5} />

@@ -1,25 +1,15 @@
 'use client'
 
 import Link from 'next/link'
-import { usePathname } from 'next/navigation'
-import { cn } from '@/lib/utils'
+import { useNavLinks } from './use-nav-links'
 
 interface NavLinksProps {
   isOrganizer: boolean
-  isLoggedIn: boolean
+  isLoggedIn:  boolean
 }
 
 export function NavLinks({ isOrganizer, isLoggedIn }: NavLinksProps) {
-  const pathname = usePathname()
-  const dashboardHref = isOrganizer ? '/organizer' : '/athlete'
-
-  const linkCn = (href: string) =>
-    cn(
-      'transition-colors duration-150',
-      pathname === href || (href !== '/' && pathname.startsWith(href))
-        ? 'text-foreground font-medium'
-        : 'text-muted-foreground hover:text-foreground'
-    )
+  const { dashboardHref, linkCn } = useNavLinks(isOrganizer)
 
   return (
     <nav className="hidden md:flex items-center gap-6 text-sm">

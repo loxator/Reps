@@ -1,9 +1,9 @@
 'use client'
 
 import { X, Plus, Trash2, Search } from 'lucide-react'
-import { useState, useRef, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { useHeatManager, type HeatRow, type RegSummary } from './use-heat-manager'
+import { useHeatColumn } from './use-heat-column'
 
 type Props = {
   workoutId:     string
@@ -29,7 +29,6 @@ export function HeatManager({ workoutId, workoutName, initialHeats, registration
         </div>
       )}
 
-      {/* Summary + action bar */}
       <div className="flex items-center justify-between mb-5">
         <p className="text-sm text-muted-foreground">
           {registrations.length} athlete{registrations.length !== 1 ? 's' : ''} ·{' '}
@@ -44,7 +43,6 @@ export function HeatManager({ workoutId, workoutName, initialHeats, registration
         </Button>
       </div>
 
-      {/* Heat columns */}
       <div className="flex gap-4 overflow-x-auto pb-2">
         {heats.map((heat) => (
           <HeatColumn
@@ -83,48 +81,19 @@ function HeatColumn({
   onAssign:         (regId: string) => void
   onUnassign:       (regId: string) => void
 }) {
-  const [editingTime,  setEditingTime]  = useState(false)
-  const [showPopover,  setShowPopover]  = useState(false)
-  const [search,       setSearch]       = useState('')
-  const popoverRef = useRef<HTMLDivElement>(null)
-  const searchRef  = useRef<HTMLInputElement>(null)
+  const {
+    editingTime, setEditingTime,
+    showPopover, setShowPopover,
+    search, setSearch,
+    popoverRef, searchRef,
+    filteredUnassigned,
+    formatTime,
+    toLocalInput,
+    closePopover,
+  } = useHeatColumn(unassigned)
 
   const assignedRegs = allRegistrations.filter((r) => heat.assignedIds.includes(r.id))
   const isFull       = heat.capacity > 0 && assignedRegs.length >= heat.capacity
-
-  const filteredUnassigned = unassigned.filter((r) =>
-    [r.athleteName, r.teamName].filter(Boolean).join(' ').toLowerCase().includes(search.toLowerCase())
-  )
-
-  // Close popover on outside click
-  useEffect(() => {
-    if (!showPopover) return
-    function handle(e: MouseEvent) {
-      if (popoverRef.current && !popoverRef.current.contains(e.target as Node)) {
-        setShowPopover(false)
-        setSearch('')
-      }
-    }
-    document.addEventListener('mousedown', handle)
-    return () => document.removeEventListener('mousedown', handle)
-  }, [showPopover])
-
-  // Focus search input when popover opens
-  useEffect(() => {
-    if (showPopover) searchRef.current?.focus()
-  }, [showPopover])
-
-  function formatTime(ts: string | null) {
-    if (!ts) return null
-    return new Date(ts).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-  }
-
-  function toLocalInput(ts: string | null) {
-    if (!ts) return ''
-    const d   = new Date(ts)
-    const pad = (n: number) => String(n).padStart(2, '0')
-    return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
-  }
 
   return (
     <div className="w-52 shrink-0 rounded-xl border border-border bg-card shadow-card flex flex-col">
@@ -143,7 +112,6 @@ function HeatColumn({
           </button>
         </div>
 
-        {/* Start time */}
         {editingTime ? (
           <input
             type="datetime-local"
@@ -172,7 +140,7 @@ function HeatColumn({
         </p>
       </div>
 
-      {/* Assigned athletes — scrollable so the column height stays fixed */}
+      {/* Assigned athletes */}
       <div className="p-3 flex flex-col gap-1.5 overflow-y-auto max-h-64 flex-1">
         {assignedRegs.map((reg) => (
           <div key={reg.id} className="flex items-center gap-1.5 text-sm">
@@ -187,7 +155,7 @@ function HeatColumn({
         ))}
       </div>
 
-      {/* Add athlete — searchable popover */}
+      {/* Add athlete popover */}
       {!isFull && unassigned.length > 0 && (
         <div className="px-3 pb-3 relative" ref={popoverRef}>
           <button
@@ -200,7 +168,6 @@ function HeatColumn({
 
           {showPopover && (
             <div className="absolute bottom-full left-0 mb-1 z-30 w-56 bg-card border border-border rounded-xl shadow-panel overflow-hidden">
-              {/* Search input */}
               <div className="flex items-center gap-2 px-3 py-2 border-b border-border">
                 <Search className="size-3.5 text-muted-foreground shrink-0" />
                 <input
@@ -218,13 +185,12 @@ function HeatColumn({
                 )}
               </div>
 
-              {/* Filtered list */}
               <div className="max-h-48 overflow-y-auto">
                 {filteredUnassigned.length > 0 ? (
                   filteredUnassigned.map((reg) => (
                     <button
                       key={reg.id}
-                      onClick={() => { onAssign(reg.id); setShowPopover(false); setSearch('') }}
+                      onClick={() => { onAssign(reg.id); closePopover() }}
                       className="w-full text-left px-3 py-2 text-sm hover:bg-muted transition-colors"
                     >
                       <span className="truncate block">{reg.athleteName}</span>
